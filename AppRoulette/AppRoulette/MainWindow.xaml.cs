@@ -89,8 +89,8 @@ namespace AppRoulette
             InitializeComponent();
 
             ViewModel = new MainViewModel(
-                new JsonDataPersistenceService(),
-                new RandomService());
+                new RandomService(),
+                new SqliteItemRepository());
 
             ViewModel.PropertyChanged += (_, e) =>
             {

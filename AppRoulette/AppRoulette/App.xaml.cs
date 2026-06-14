@@ -1,4 +1,5 @@
-﻿using Microsoft.UI.Xaml;
+﻿using AppRoulette.Services;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
@@ -78,9 +79,32 @@ namespace AppRoulette
         /// Invoked when the application is launched.
         /// </summary>
         /// <param name="args">Details about the launch request and process.</param>
-        protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+        protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
+            // ウィンドウを最初に作成
             _window = new MainWindow();
+
+            // データベースを初期化（ウィンドウ作成後に実行）
+            System.Diagnostics.Debug.WriteLine("[App] Starting database initialization...");
+            try
+            {
+                // 同期的に初期化を実行
+                await DatabaseInitializer.InitializeAsync();
+                string dbPath = DatabaseInitializer.GetDatabasePath();
+                System.Diagnostics.Debug.WriteLine(
+                    $"[App] ✅ Database initialized successfully");
+                System.Diagnostics.Debug.WriteLine(
+                    $"[App] DB Path: {dbPath}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[App] ❌ Database initialization failed!");
+                System.Diagnostics.Debug.WriteLine(
+                    $"[App] Error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine(
+                    $"[App] StackTrace: {ex.StackTrace}");
+            }
 
             // ウィンドウアイコンを設定
             try
