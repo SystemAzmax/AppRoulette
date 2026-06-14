@@ -27,22 +27,13 @@
         <!-- ===== 左列：ルーレット描画エリア ===== -->
         <Grid Grid.Column="0">
 
-            <!-- Win2D CanvasControl（扇形描画） -->
+            <!-- Win2D CanvasControl（扇形描画・インジケーター含む） -->
             <canvas:CanvasControl
                 x:Name="RouletteCanvas"
                 Draw="RouletteCanvas_Draw"
                 Tapped="RouletteCanvas_Tapped"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch" />
-
-            <!-- 赤い三角インジケーター（3時方向・右辺中央） -->
-            <Polygon
-                Points="0,0 20,10 0,20"
-                Fill="Red"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"
-                Margin="0,0,0,0"
-                IsHitTestVisible="False" />
 
         </Grid>
 
@@ -64,8 +55,8 @@
                 <ComboBox
                     x:Name="GroupComboBox"
                     ItemsSource="{x:Bind ViewModel.GroupList, Mode=OneWay}"
-                    SelectedItem="{x:Bind ViewModel.SelectedGroup, Mode=TwoWay}"
                     DisplayMemberPath="DisplayName"
+                    SelectionChanged="GroupComboBox_SelectionChanged"
                     MinWidth="160" />
 
                 <!-- アイテム数：「n 件」 -->
@@ -83,9 +74,9 @@
 
             <!-- アイテム入力テキストエリア（1行1アイテム） -->
             <TextBox
+                x:Name="ItemsTextBox"
                 Grid.Row="2"
-                Text="{x:Bind ViewModel.ItemsText,
-                    Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                TextChanged="OnItemsTextBoxTextChanged"
                 AcceptsReturn="True"
                 TextWrapping="Wrap"
                 ScrollViewer.VerticalScrollBarVisibility="Auto"

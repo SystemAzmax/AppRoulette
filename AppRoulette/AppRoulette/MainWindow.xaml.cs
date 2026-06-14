@@ -48,6 +48,18 @@ namespace AppRoulette
         /// <summary>フレーム更新用タイマー。</summary>
         private readonly DispatcherTimer _spinTimer;
 
+        /// <summary>
+        /// テキストボックスの手動同期中かを示すフラグ。
+        /// この間は OnItemsTextBoxTextChanged を無視します。
+        /// </summary>
+        private bool _isUpdatingTextBox;
+
+        /// <summary>
+        /// ユーザー入力中かを示すフラグ。
+        /// この間は ItemsText 変更時の TextBox 更新を無視します。
+        /// </summary>
+        private bool _isUserInput;
+
         // ---------------------------------------------------------------
         // ViewModel
         // ---------------------------------------------------------------
@@ -75,11 +87,39 @@ namespace AppRoulette
 
             ViewModel.PropertyChanged += (_, e) =>
             {
+                // ルーレット再描画：アイテム数またはグループ変更時（ユーザー入力中もルーレットは更新）
                 if (e.PropertyName is nameof(ViewModel.ItemCount)
                                    or nameof(ViewModel.SelectedGroup))
                 {
                     _rotationAngle = 0f;
                     RouletteCanvas.Invalidate();
+                }
+
+                // ItemsText 変更時もルーレットを再描画（テキストの内容は同じでも表示を更新）
+                if (e.PropertyName == nameof(ViewModel.ItemsText))
+                {
+                    RouletteCanvas.Invalidate();
+                }
+
+                // SelectedGroup 変更時に ComboBox を同期
+                if (e.PropertyName == nameof(ViewModel.SelectedGroup))
+                {
+                    GroupComboBox.SelectedItem = ViewModel.SelectedGroup;
+                }
+
+                // ItemsText 変更時に TextBox を同期（ユーザー入力中は無視）
+                // ユーザー入力中は TextBox が既に最新なので更新は不要
+                if (e.PropertyName == nameof(ViewModel.ItemsText) && !_isUserInput)
+                {
+                    _isUpdatingTextBox = true;
+                    try
+                    {
+                        ItemsTextBox.Text = ViewModel.ItemsText.Replace("\n", "\r\n");
+                    }
+                    finally
+                    {
+                        _isUpdatingTextBox = false;
+                    }
                 }
             };
 
@@ -88,6 +128,10 @@ namespace AppRoulette
                 Interval = System.TimeSpan.FromMilliseconds(TIMER_INTERVAL_MS),
             };
             _spinTimer.Tick += OnSpinTimerTick;
+
+            // ウィンドウサイズを1200×800に設定
+            ExtendsContentIntoTitleBar = true;
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
         }
 
         // ---------------------------------------------------------------
@@ -102,6 +146,24 @@ namespace AppRoulette
         private async void OnRootGridLoaded(object sender, RoutedEventArgs e)
         {
             await ViewModel.InitializeCommand.ExecuteAsync(null);
+        }
+
+        // ---------------------------------------------------------------
+        // グループ選択
+        // ---------------------------------------------------------------
+
+        /// <summary>
+        /// グループ ComboBox の選択変更イベントハンドラー。
+        /// ViewModel を確実に更新します。
+        /// </summary>
+        /// <param name="sender">ComboBox。</param>
+        /// <param name="e">イベント引数。</param>
+        private void GroupComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is ComboBox comboBox && comboBox.SelectedItem is Models.RouletteGroup group)
+            {
+                ViewModel.SelectedGroup = group;
+            }
         }
 
         // ---------------------------------------------------------------
@@ -140,13 +202,31 @@ namespace AppRoulette
 
         /// <summary>
         /// ルーレットキャンバスのタップイベントハンドラー。
-        /// アイテムが存在し回転中でない場合にアニメーションを開始します。
+        /// ルーレット円内をタップし、かつアイテムが存在し回転中でない場合にアニメーションを開始します。
         /// </summary>
         /// <param name="sender">タップされたキャンバス。</param>
         /// <param name="e">タップイベント引数。</param>
         private void RouletteCanvas_Tapped(object sender, TappedRoutedEventArgs e)
         {
             if (!ViewModel.SpinCommand.CanExecute(null))
+            {
+                return;
+            }
+
+            // タップ位置を取得
+            var tapPoint = e.GetPosition(sender as UIElement);
+            var cx = RouletteCanvas.ActualWidth / 2;
+            var cy = RouletteCanvas.ActualHeight / 2;
+            var size = (float)System.Math.Min(RouletteCanvas.ActualWidth, RouletteCanvas.ActualHeight);
+            var radius = size / 2f * RouletteRenderer.RADIUS_RATIO;
+
+            // タップ位置から円の中心までの距離を計算
+            var dx = tapPoint.X - cx;
+            var dy = tapPoint.Y - cy;
+            var distance = System.Math.Sqrt(dx * dx + dy * dy);
+
+            // 円内のみで反応
+            if (distance > radius)
             {
                 return;
             }
@@ -259,6 +339,40 @@ namespace AppRoulette
         {
             var f = 1f - t;
             return 1f - f * f * f;
+        }
+
+        /// <summary>
+        /// アイテム入力テキストボックスのテキスト変更イベントハンドラー。
+        /// WinUI 3 の TextBox は Enter で \r のみ挿入するため、\n に正規化して ViewModel に通知します。
+        /// グループ選択時の自動同期中は無視し、ユーザー入力中は TextBox の再更新を防ぎます。
+        /// </summary>
+        /// <param name="sender">テキストボックス。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnItemsTextBoxTextChanged(object sender, TextChangedEventArgs e)
+        {
+            // グループ選択時の TextBox 自動更新中は無視
+            if (_isUpdatingTextBox)
+            {
+                return;
+            }
+
+            if (sender is TextBox textBox)
+            {
+                // ユーザー入力中フラグを立てて、PropertyChanged ハンドラーの TextBox 更新を防ぐ
+                _isUserInput = true;
+                try
+                {
+                    // \r\n -> \n -> \r の順に正規化（WinUI3 TextBox は \r のみ使用）
+                    var normalized = textBox.Text
+                        .Replace("\r\n", "\n")
+                        .Replace('\r', '\n');
+                    ViewModel.ItemsText = normalized;
+                }
+                finally
+                {
+                    _isUserInput = false;
+                }
+            }
         }
 
         /// <summary>

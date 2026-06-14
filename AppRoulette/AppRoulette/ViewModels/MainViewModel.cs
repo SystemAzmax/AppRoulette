@@ -141,8 +141,7 @@ public class MainViewModel : ObservableObject
     /// </summary>
     private async Task InitializeAsync()
     {
-        var groups = await _persistenceService.LoadGroupsAsync()
-            .ConfigureAwait(false);
+        var groups = await _persistenceService.LoadGroupsAsync();
 
         GroupList = groups;
         SelectedGroup = groups.Count > 0 ? groups[0] : null;
@@ -189,7 +188,9 @@ public class MainViewModel : ObservableObject
         if (currentLineCount > previousLineCount)
         {
             // Fire-and-forget: 改行入力時に非同期保存（例外はデバッグ出力）
-            _ = SaveAsync().ContinueWith(
+            // GroupList 全体を保存。SelectedGroup は GroupList の同一インスタンス参照のため、
+            // SelectedGroup.Items の変更は自動的に GroupList に反映される
+            _ = _persistenceService.SaveGroupsAsync(GroupList).ContinueWith(
                 t => System.Diagnostics.Debug.WriteLine(
                     $"[AppRoulette] 保存エラー: {t.Exception}"),
                 System.Threading.CancellationToken.None,
@@ -214,6 +215,18 @@ public class MainViewModel : ObservableObject
             return;
         }
 
+        // グループを切り替える前に現在のデータを保存
+        if (GroupList.Count > 0)
+        {
+            // Fire-and-forget: グループ切り替え時に全体を保存
+            _ = _persistenceService.SaveGroupsAsync(GroupList).ContinueWith(
+                t => System.Diagnostics.Debug.WriteLine(
+                    $"[AppRoulette] グループ切り替え時の保存エラー: {t.Exception}"),
+                System.Threading.CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
+        }
+
         var text = FormatItems(value.Items);
         _previousItemsText = text;
         ItemsText = text;
@@ -231,8 +244,7 @@ public class MainViewModel : ObservableObject
             return;
         }
 
-        await _persistenceService.SaveGroupsAsync(GroupList)
-            .ConfigureAwait(false);
+        await _persistenceService.SaveGroupsAsync(GroupList);
     }
 
     /// <summary>

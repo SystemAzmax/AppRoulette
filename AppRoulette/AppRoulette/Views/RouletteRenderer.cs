@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Numerics;
 using AppRoulette.Models;
 using Microsoft.Graphics.Canvas;
@@ -14,11 +15,21 @@ internal static class RouletteRenderer
     /// <summary>円の半径比率（CanvasControl サイズに対する割合）。</summary>
     internal const float RADIUS_RATIO = 0.92f;
 
-    /// <summary>テキスト配置半径比率。</summary>
-    private const float TEXT_RADIUS_RATIO = 0.62f;
+    /// <summary>テキスト配置半径比率（外縁部の中央）。</summary>
+    private const float TEXT_RADIUS_RATIO = 0.77f;
 
     /// <summary>中心装飾円の半径比率。</summary>
     private const float CENTER_CIRCLE_RATIO = 0.08f;
+
+    /// <summary>インジケーター（三角形）の高さ（px）。</summary>
+    private const float INDICATOR_HEIGHT = 48f;
+
+    /// <summary>インジケーター（三角形）の幅（px）。</summary>
+    private const float INDICATOR_WIDTH = 40f;
+
+    /// <summary>インジケーターの色。</summary>
+    private static readonly Windows.UI.Color INDICATOR_COLOR =
+        Windows.UI.Color.FromArgb(255, 220, 30, 30);
 
     /// <summary>扇形の境界線の太さ。</summary>
     private const float BORDER_STROKE_WIDTH = 1.5f;
@@ -30,7 +41,7 @@ internal static class RouletteRenderer
     private const int ARC_SEGMENTS = 60;
 
     /// <summary>テキストの最大文字数計算に使う1文字あたりの推定幅（px）。</summary>
-    private const float TEXT_CHAR_WIDTH_ESTIMATE = 11f;
+    private const float TEXT_CHAR_WIDTH_ESTIMATE = 7f;
 
     /// <summary>扇形に使用するカラーパレット（12色サイクル）。</summary>
     private static readonly Windows.UI.Color[] SECTOR_COLORS =
@@ -94,6 +105,7 @@ internal static class RouletteRenderer
         if (items.Count == 0)
         {
             DrawPlaceholder(session, cx, cy, radius);
+            DrawIndicator(session, cx, cy, radius);
             return;
         }
 
@@ -121,6 +133,9 @@ internal static class RouletteRenderer
 
         // ルーレット外周線
         session.DrawCircle(cx, cy, radius, BORDER_COLOR, OUTER_STROKE_WIDTH);
+
+        // インジケーター（3時方向・円の外側から円にかかる赤い三角）
+        DrawIndicator(session, cx, cy, radius);
     }
 
     // ---------------------------------------------------------------
@@ -190,27 +205,118 @@ internal static class RouletteRenderer
         var textX = cx + textRadius * MathF.Cos(midAngle);
         var textY = cy + textRadius * MathF.Sin(midAngle);
 
-        // テキストを扇形の放射方向に沿って90°回転
-        var rotateAngle = midAngle + MathF.PI / 2f;
+        // テキストを扇形の放射方向に沿って左に90°回転
+        // 元の放射方向: midAngle + π/2
+        // 左に90°回転: -π/2 を追加
+        var rotateAngle = midAngle + MathF.PI / 2f - MathF.PI / 2f;  // = midAngle
         var oldTransform = session.Transform;
         session.Transform = Matrix3x2.CreateRotation(
             rotateAngle,
             new Vector2(textX, textY));
 
         var maxChars = CalcMaxChars(sweepAngle, textRadius);
-        var displayText = text.Length > maxChars
-            ? text[..maxChars] + "…"
-            : text;
+
+        // テキストを複数行で表示（最大2行）
+        var lines = SplitTextIntoLines(text, maxChars, 2);
+        var lineHeight = fontSize * 1.2f;  // 行間を少し開ける
+        var totalHeight = lineHeight * lines.Length;
+        var startY = textY + totalHeight / 2f - lineHeight / 2f;
 
         using var textFormat = new CanvasTextFormat
         {
             FontSize = fontSize,
-            HorizontalAlignment = CanvasHorizontalAlignment.Center,
+            HorizontalAlignment = CanvasHorizontalAlignment.Right,
             VerticalAlignment = CanvasVerticalAlignment.Center,
         };
 
-        session.DrawText(displayText, textX, textY, TEXT_COLOR, textFormat);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var lineY = startY - i * lineHeight;
+            session.DrawText(lines[i], textX, lineY, TEXT_COLOR, textFormat);
+        }
+
         session.Transform = oldTransform;
+    }
+
+    /// <summary>
+    /// テキストを複数行に分割します。
+    /// </summary>
+    /// <param name="text">元のテキスト。</param>
+    /// <param name="charsPerLine">1行あたりの最大文字数。</param>
+    /// <param name="maxLines">最大行数。</param>
+    /// <returns>分割されたテキストの行配列。</returns>
+    private static string[] SplitTextIntoLines(string text, int charsPerLine, int maxLines)
+    {
+        if (string.IsNullOrEmpty(text))
+            return new[] { "" };
+
+        var lines = new List<string>();
+        var remaining = text;
+
+        for (var i = 0; i < maxLines && remaining.Length > 0; i++)
+        {
+            if (remaining.Length <= charsPerLine)
+            {
+                lines.Add(remaining);
+                break;
+            }
+            else
+            {
+                // charsPerLine文字で切り取る
+                var line = remaining[..charsPerLine];
+                lines.Add(line);
+                remaining = remaining[charsPerLine..];
+            }
+        }
+
+        // 最後の行が満杯だったら省略記号を追加
+        if (remaining.Length > 0 && lines.Count > 0)
+        {
+            var lastLine = lines[lines.Count - 1];
+            if (lastLine.Length >= 2)
+            {
+                lines[lines.Count - 1] = lastLine[..^2] + "…";
+            }
+            else
+            {
+                lines[lines.Count - 1] = "…";
+            }
+        }
+
+        return lines.Count > 0 ? lines.ToArray() : new[] { "" };
+    }
+
+    /// <summary>
+    /// アイテム未登録時のプレースホルダー円を描画します。
+    /// </summary>
+    /// <param name="session">描画セッション。</param>
+    /// <param name="cx">円の中心 X 座標。</param>
+    /// <param name="cy">円の中心 Y 座標。</param>
+    /// <param name="radius">半径。</param>
+    private static void DrawIndicator(
+        CanvasDrawingSession session,
+        float cx,
+        float cy,
+        float radius)
+    {
+        // 3時方向（右）の円の外縁にかかる三角形を描画
+        // 三角形の頂点（右向き）：先端が円の内側、底辺が円の外側
+        var tipX = cx + radius - INDICATOR_WIDTH * 0.5f;
+        var baseX = cx + radius + INDICATOR_HEIGHT * 0.5f;
+        var halfH = INDICATOR_HEIGHT / 2f;
+
+        var p0 = new Vector2(tipX, cy);               // 先端（左・円内側）
+        var p1 = new Vector2(baseX, cy - halfH);      // 右上
+        var p2 = new Vector2(baseX, cy + halfH);      // 右下
+
+        using var pathBuilder = new CanvasPathBuilder(session);
+        pathBuilder.BeginFigure(p0);
+        pathBuilder.AddLine(p1);
+        pathBuilder.AddLine(p2);
+        pathBuilder.EndFigure(CanvasFigureLoop.Closed);
+
+        using var geometry = CanvasGeometry.CreatePath(pathBuilder);
+        session.FillGeometry(geometry, INDICATOR_COLOR);
     }
 
     /// <summary>
