@@ -358,6 +358,9 @@ namespace AppRoulette
 
             var selectedName = items[index].Name;
 
+            // テキストボックス内でアイテムをハイライト選択
+            HighlightItemInTextBox(index);
+
             // ボタンを中央に配置するためのカスタムコンテンツ
             var stackPanel = new StackPanel
             {
@@ -404,6 +407,55 @@ namespace AppRoulette
             };
 
             await dialog.ShowAsync();
+        }
+
+        /// <summary>
+        /// テキストボックス内で指定インデックスのアイテムを選択状態にします。
+        /// </summary>
+        /// <param name="itemIndex">選択するアイテムのインデックス。</param>
+        private void HighlightItemInTextBox(int itemIndex)
+        {
+            if (itemIndex < 0 || ItemsTextBox is null)
+            {
+                return;
+            }
+
+            // テキストボックスのテキストを取得
+            string text = ItemsTextBox.Text;
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            // 1行ごとに分割してインデックスのアイテムを見つける
+            var lines = text.Split(new[] { "\r\n", "\r", "\n" }, 
+                                   StringSplitOptions.None);
+
+            if (itemIndex >= lines.Length)
+            {
+                return;
+            }
+
+            // 現在のインデックスのアイテムのテキスト位置を計算
+            int startPosition = 0;
+            for (int i = 0; i < itemIndex; i++)
+            {
+                startPosition += lines[i].Length;
+                // 元のテキスト内の改行を探して正確な位置を計算
+                if (startPosition < text.Length && text[startPosition] == '\r')
+                {
+                    startPosition += 2; // \r\n
+                }
+                else if (startPosition < text.Length && 
+                         (text[startPosition] == '\n' || text[startPosition] == '\r'))
+                {
+                    startPosition += 1; // \n または \r
+                }
+            }
+
+            // テキストボックスでそのアイテムを選択状態にする
+            ItemsTextBox.Focus(FocusState.Programmatic);
+            ItemsTextBox.Select(startPosition, lines[itemIndex].Length);
         }
 
         /// <summary>
