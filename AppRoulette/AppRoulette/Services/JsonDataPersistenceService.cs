@@ -18,6 +18,7 @@ public class JsonDataPersistenceService : IDataPersistenceService
 
     private readonly string _dataDir;
     private readonly string _dataFilePath;
+    private readonly string _selectedGroupIdFilePath;
 
     /// <summary>
     /// 既定のデータディレクトリ（%LOCALAPPDATA%\AppRoulette）を使用して
@@ -36,6 +37,7 @@ public class JsonDataPersistenceService : IDataPersistenceService
     {
         _dataDir = dataDir;
         _dataFilePath = Path.Combine(_dataDir, "data.json");
+        _selectedGroupIdFilePath = Path.Combine(_dataDir, "selectedGroupId.json");
     }
 
     /// <summary>
@@ -90,5 +92,45 @@ public class JsonDataPersistenceService : IDataPersistenceService
         }
 
         return groups;
+    }
+
+    /// <summary>
+    /// 最後に選択されたグループIDを JSON ファイルから非同期で読み込みます。
+    /// ファイルが存在しない場合は 0 を返します。
+    /// </summary>
+    /// <returns>グループID（1～9）。ファイルなしまたは解析失敗時は0。</returns>
+    public async Task<int> GetLastSelectedGroupIdAsync()
+    {
+        if (!File.Exists(_selectedGroupIdFilePath))
+        {
+            return 0;
+        }
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(_selectedGroupIdFilePath)
+                .ConfigureAwait(false);
+            var data = JsonSerializer.Deserialize<Dictionary<string, int>>(
+                json, JSON_OPTIONS);
+            return data?.TryGetValue("groupId", out var groupId) == true ? groupId : 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// 最後に選択されたグループIDを JSON ファイルに非同期で保存します。
+    /// </summary>
+    /// <param name="groupId">グループID（1～9）。</param>
+    public async Task SaveLastSelectedGroupIdAsync(int groupId)
+    {
+        Directory.CreateDirectory(_dataDir);
+
+        var data = new Dictionary<string, int> { { "groupId", groupId } };
+        var json = JsonSerializer.Serialize(data, JSON_OPTIONS);
+        await File.WriteAllTextAsync(_selectedGroupIdFilePath, json)
+            .ConfigureAwait(false);
     }
 }

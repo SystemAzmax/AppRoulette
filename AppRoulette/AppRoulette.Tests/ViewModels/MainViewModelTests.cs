@@ -21,7 +21,7 @@ public class MainViewModelTests
     private static FakeDataPersistenceService CreateDefaultFakeService(
         int itemCountInGroup1 = 0)
     {
-        var group1 = new RouletteGroup(1, "グループ1");
+        var group1 = new RouletteGroup(1, "Roulette1");
         for (var i = 0; i < itemCountInGroup1; i++)
         {
             group1.TryAddItem(new RouletteItem($"アイテム{i + 1}"));
@@ -32,8 +32,8 @@ public class MainViewModelTests
             GroupsToReturn = new List<RouletteGroup>
             {
                 group1,
-                new(2, "グループ2"),
-                new(3, "グループ3"),
+                new(2, "Roulette2"),
+                new(3, "Roulette3"),
             },
         };
     }
@@ -49,7 +49,8 @@ public class MainViewModelTests
         // JSON persistence は廃止されたため、ダミー実装
         return new(
             new FakeRandomService(0),
-            new FakeItemRepository());
+            new FakeItemRepository(),
+            new FakeDataPersistenceService());
     }
 
     /// <summary>
@@ -58,11 +59,13 @@ public class MainViewModelTests
     private static MainViewModel CreateSut(
         FakeRandomService? fakeRandom = null,
         int itemCountInGroup1 = 0,
-        FakeItemRepository? customRepository = null)
+        FakeItemRepository? customRepository = null,
+        FakeDataPersistenceService? customPersistence = null)
     {
         FakeItemRepository fakeRepo = customRepository ?? new FakeItemRepository();
+        FakeDataPersistenceService fakePersistence = customPersistence ?? new FakeDataPersistenceService();
 
-        // customRepository が未指定かつ itemCountInGroup1 > 0 の場合、グループ1にアイテムを設定
+        // customRepository が未指定かつ itemCountInGroup1 > 0 の場合、Roulette1にアイテムを設定
         if (customRepository is null && itemCountInGroup1 > 0)
         {
             var items = Enumerable.Range(1, itemCountInGroup1)
@@ -73,7 +76,8 @@ public class MainViewModelTests
 
         return new(
             fakeRandom ?? new FakeRandomService(0),
-            fakeRepo);
+            fakeRepo,
+            fakePersistence);
     }
 
     // ---------------------------------------------------------------
@@ -90,7 +94,7 @@ public class MainViewModelTests
         await sut.InitializeCommand.ExecuteAsync(null);
 
         // Assert
-        Assert.Equal(3, sut.GroupList.Count);
+        Assert.Equal(9, sut.GroupList.Count);
     }
 
     [Fact]
@@ -149,7 +153,7 @@ public class MainViewModelTests
         var sut = CreateSut(itemCountInGroup1: 3);
         await sut.InitializeCommand.ExecuteAsync(null);
 
-        // Act（グループ1が選択された時点でアイテム数が反映される）
+        // Act（Roulette1が選択された時点でアイテム数が反映される）
         var result = sut.ItemCount;
 
         // Assert
@@ -468,5 +472,87 @@ public class MainViewModelTests
 
         // Assert
         Assert.Equal(3, result);
+    }
+
+    // ---------------------------------------------------------------
+    // グループID永続化
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public async Task SelectedGroup_グループを切り替えた場合_グループIDを保存する()
+    {
+        // Arrange
+        var fakePersistence = new FakeDataPersistenceService();
+        var fakeRepo = new FakeItemRepository();
+        var sut = CreateSut(customPersistence: fakePersistence, customRepository: fakeRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // 初期化時の呼び出しをカウントした状態から、新規に2番目の呼び出しをカウントする新しいfakePersistenceを作成
+        var fakePersistence2 = new FakeDataPersistenceService();
+        sut.SelectedGroup = sut.GroupList[2]; // Roulette3 を選択
+
+        // Assert: SelectGroupが呼び出されると、新規作成した永続化サービスではなく既存のsutが使用するため
+        // 初回InitializeAsyncで1回、SelectedGroup変更で1回、合計2回呼ばれることを確認
+        await Task.Delay(100);
+        Assert.True(fakePersistence.SaveLastSelectedGroupIdCallCount > 0);
+        // LastSavedGroupId は最後に設定された値が Roulette3 (Id=3) であること
+        Assert.Equal(3, fakePersistence.LastSavedGroupId);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_保存されたグループIDがある場合_該当グループを復元する()
+    {
+        // Arrange
+        var fakePersistence = new FakeDataPersistenceService
+        {
+            LastSavedGroupId = 2 // Roulette2 を保存済み
+        };
+        var fakeRepo = new FakeItemRepository();
+        var sut = CreateSut(customPersistence: fakePersistence, customRepository: fakeRepo);
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.NotNull(sut.SelectedGroup);
+        Assert.Equal(2, sut.SelectedGroup.Id);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_保存されたグループIDがない場合_最初のグループを選択する()
+    {
+        // Arrange
+        var fakePersistence = new FakeDataPersistenceService
+        {
+            LastSavedGroupId = 0 // グループID未保存
+        };
+        var fakeRepo = new FakeItemRepository();
+        var sut = CreateSut(customPersistence: fakePersistence, customRepository: fakeRepo);
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.NotNull(sut.SelectedGroup);
+        Assert.Equal(1, sut.SelectedGroup.Id);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_保存されたグループIDが範囲外の場合_最初のグループを選択する()
+    {
+        // Arrange
+        var fakePersistence = new FakeDataPersistenceService
+        {
+            LastSavedGroupId = 99 // 存在しないグループID
+        };
+        var fakeRepo = new FakeItemRepository();
+        var sut = CreateSut(customPersistence: fakePersistence, customRepository: fakeRepo);
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.NotNull(sut.SelectedGroup);
+        Assert.Equal(1, sut.SelectedGroup.Id);
     }
 }

@@ -14,6 +14,7 @@ public class MainViewModel : ObservableObject
 {
     private readonly IRandomService _randomService;
     private readonly IItemRepository _itemRepository;
+    private readonly IDataPersistenceService _dataPersistence;
 
     /// <summary>直前の <see cref="ItemsText"/> の値（改行増加検出に使用）。</summary>
     private string _previousItemsText = string.Empty;
@@ -127,27 +128,31 @@ public class MainViewModel : ObservableObject
     /// </summary>
     /// <param name="randomService">ランダム生成サービス。</param>
     /// <param name="itemRepository">SQLite Item リポジトリ。</param>
+    /// <param name="dataPersistence">データ永続化サービス。</param>
     public MainViewModel(
         IRandomService randomService,
-        IItemRepository itemRepository)
+        IItemRepository itemRepository,
+        IDataPersistenceService dataPersistence)
     {
         _randomService = randomService;
         _itemRepository = itemRepository;
+        _dataPersistence = dataPersistence;
         InitializeCommand = new AsyncRelayCommand(InitializeAsync);
         SpinCommand = new RelayCommand(Spin, CanSpin);
     }
 
     /// <summary>
     /// グループデータを初期化し、SQLite から Items を読み込みます。
-    /// JSON は使用せず、デフォルトの3グループを作成して SQLite から Items を充填します。
+    /// JSON は使用せず、デフォルトの9グループを作成して SQLite から Items を充填します。
+    /// 前回起動時に選択されたグループを復元します。
     /// </summary>
     private async Task InitializeAsync()
     {
-        // デフォルトグループを作成（グループ1～3）
+        // デフォルトグループを作成（Roulette1～9）
         var groups = new List<RouletteGroup>(RouletteGroup.GROUP_COUNT);
         for (var i = 1; i <= RouletteGroup.GROUP_COUNT; i++)
         {
-            groups.Add(new RouletteGroup(i, $"グループ{i}"));
+            groups.Add(new RouletteGroup(i, $"Roulette{i}"));
         }
 
         // SQLite から各グループのアイテムを読み込み、グループに充填
@@ -160,7 +165,12 @@ public class MainViewModel : ObservableObject
         }
 
         GroupList = groups;
-        SelectedGroup = groups.Count > 0 ? groups[0] : null;
+
+        // 前回起動時に選択されたグループを復元
+        var lastSelectedGroupId = await _dataPersistence.GetLastSelectedGroupIdAsync();
+        var selectedGroup = groups.FirstOrDefault(g => g.Id == lastSelectedGroupId) 
+            ?? (groups.Count > 0 ? groups[0] : null);
+        SelectedGroup = selectedGroup;
     }
 
     /// <summary>
@@ -244,6 +254,7 @@ public class MainViewModel : ObservableObject
     /// <summary>
     /// <see cref="SelectedGroup"/> 変更時にテキストとアイテム数を更新します。
     /// グループ切り替え前に、現在のグループの Items を SQLite に同期します。
+    /// 選択されたグループIDを永続化します。
     /// </summary>
     /// <param name="value">変更後のグループ。</param>
     private void OnSelectedGroupChanged(RouletteGroup? value)
@@ -267,6 +278,21 @@ public class MainViewModel : ObservableObject
         ItemsText = text;
         ItemCount = value.Items.Count;
         SelectedItemIndex = -1;
+
+        // グループIDを永続化（Fire-and-forget）
+        _ = _dataPersistence.SaveLastSelectedGroupIdAsync(value.Id)
+            .ContinueWith(
+                t =>
+                {
+                    if (t.IsFaulted && t.Exception is not null)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[AppRoulette] グループID保存エラー: {t.Exception.InnerException}");
+                    }
+                },
+                System.Threading.CancellationToken.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default);
     }
 
     /// <summary>

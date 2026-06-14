@@ -17,43 +17,45 @@ public class GroupSeparationTests
     {
         // Arrange
         var fakeRepo = new FakeItemRepository();
+        var fakePersistence = new FakeDataPersistenceService();
         var sut = new MainViewModel(
             new FakeRandomService(0),
-            fakeRepo);
+            fakeRepo,
+            fakePersistence);
         await sut.InitializeCommand.ExecuteAsync(null);
 
         // Act & Assert
-        // グループ1にアイテムを追加
+        // Roulette1にアイテムを追加
         sut.SelectedGroup = sut.GroupList[0];
-        sut.ItemsText = "グループ1のアイテムA\nグループ1のアイテムB";
+        sut.ItemsText = "Roulette1のアイテムA\nRoulette1のアイテムB";
         Assert.Equal(2, sut.ItemCount);
         Assert.Equal(2, sut.SelectedGroup.Items.Count);
 
-        // グループ2にアイテムを追加
+        // Roulette2にアイテムを追加
         sut.SelectedGroup = sut.GroupList[1];
-        sut.ItemsText = "グループ2のアイテムX\nグループ2のアイテムY\nグループ2のアイテムZ";
+        sut.ItemsText = "Roulette2のアイテムX\nRoulette2のアイテムY\nRoulette2のアイテムZ";
         Assert.Equal(3, sut.ItemCount);
         Assert.Equal(3, sut.SelectedGroup.Items.Count);
 
-        // グループ3は空のまま
+        // Roulette3は空のまま
         sut.SelectedGroup = sut.GroupList[2];
         Assert.Equal(0, sut.ItemCount);
         Assert.Empty(sut.SelectedGroup.Items);
 
-        // グループ1に戻ると、正しくアイテムが復元される
+        // Roulette1に戻ると、正しくアイテムが復元される
         sut.SelectedGroup = sut.GroupList[0];
         Assert.Equal(2, sut.ItemCount);
-        Assert.Equal("グループ1のアイテムA,1\nグループ1のアイテムB,1", sut.ItemsText);
-        Assert.Equal("グループ1のアイテムA", sut.SelectedGroup.Items[0].Name);
-        Assert.Equal("グループ1のアイテムB", sut.SelectedGroup.Items[1].Name);
+        Assert.Equal("Roulette1のアイテムA,1\nRoulette1のアイテムB,1", sut.ItemsText);
+        Assert.Equal("Roulette1のアイテムA", sut.SelectedGroup.Items[0].Name);
+        Assert.Equal("Roulette1のアイテムB", sut.SelectedGroup.Items[1].Name);
 
-        // グループ2に戻ると、正しくアイテムが復元される
+        // Roulette2に戻ると、正しくアイテムが復元される
         sut.SelectedGroup = sut.GroupList[1];
         Assert.Equal(3, sut.ItemCount);
-        Assert.Equal("グループ2のアイテムX,1\nグループ2のアイテムY,1\nグループ2のアイテムZ,1", sut.ItemsText);
-        Assert.Equal("グループ2のアイテムX", sut.SelectedGroup.Items[0].Name);
-        Assert.Equal("グループ2のアイテムY", sut.SelectedGroup.Items[1].Name);
-        Assert.Equal("グループ2のアイテムZ", sut.SelectedGroup.Items[2].Name);
+        Assert.Equal("Roulette2のアイテムX,1\nRoulette2のアイテムY,1\nRoulette2のアイテムZ,1", sut.ItemsText);
+        Assert.Equal("Roulette2のアイテムX", sut.SelectedGroup.Items[0].Name);
+        Assert.Equal("Roulette2のアイテムY", sut.SelectedGroup.Items[1].Name);
+        Assert.Equal("Roulette2のアイテムZ", sut.SelectedGroup.Items[2].Name);
 
         // 非同期保存の完了を待つ
         await Task.Delay(100);
