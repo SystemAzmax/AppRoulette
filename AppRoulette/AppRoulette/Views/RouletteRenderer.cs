@@ -231,7 +231,7 @@ internal static class RouletteRenderer
 
         for (var i = 0; i < lines.Length; i++)
         {
-            var lineY = startY - i * lineHeight;
+            var lineY = startY + i * lineHeight;
             session.DrawText(lines[i], textX, lineY, TEXT_COLOR, textFormat);
         }
 
