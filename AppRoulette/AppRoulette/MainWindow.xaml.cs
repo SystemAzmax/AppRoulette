@@ -5,6 +5,8 @@ using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Windows.Graphics;
+using Microsoft.UI;
 
 namespace AppRoulette
 {
@@ -59,6 +61,9 @@ namespace AppRoulette
         /// この間は ItemsText 変更時の TextBox 更新を無視します。
         /// </summary>
         private bool _isUserInput;
+
+        /// <summary>ウィンドウ位置情報を管理するサービス。</summary>
+        private IWindowPositionService _positionService;
 
         // ---------------------------------------------------------------
         // ViewModel
@@ -132,6 +137,43 @@ namespace AppRoulette
             // ウィンドウサイズを1200×800に設定
             ExtendsContentIntoTitleBar = true;
             AppWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
+
+            // ウィンドウ位置情報を読み込んで、保存されているなら適用
+            _positionService = new WindowPositionService();
+            var savedPosition = _positionService.GetWindowPosition();
+
+            if (savedPosition != null)
+            {
+                // 保存された位置がある場合は、Activated イベント時に適用
+                Activated += (sender, args) =>
+                {
+                    if (args.WindowActivationState != WindowActivationState.Deactivated)
+                    {
+                        AppWindow.Move(new PointInt32(savedPosition.X, savedPosition.Y));
+                    }
+                };
+            }
+
+            // ウィンドウを閉じる際に位置を保存
+            Closed += async (sender, args) =>
+            {
+                try
+                {
+                    var placement = AppWindow.Position;
+                    var currentPosition = new WindowPositionInfo
+                    {
+                        X = placement.X,
+                        Y = placement.Y,
+                        Width = AppWindow.Size.Width,
+                        Height = AppWindow.Size.Height,
+                    };
+                    await _positionService.SaveWindowPositionAsync(currentPosition);
+                }
+                catch
+                {
+                    // 位置保存エラーは無視
+                }
+            };
         }
 
         // ---------------------------------------------------------------
