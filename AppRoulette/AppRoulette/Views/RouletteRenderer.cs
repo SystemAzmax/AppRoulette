@@ -109,13 +109,24 @@ internal static class RouletteRenderer
             return;
         }
 
-        var sweepAngle = 2f * MathF.PI / items.Count;
         var fontSize = CalcFontSize(items.Count);
         var textRadius = radius * TEXT_RADIUS_RATIO;
 
+        // 全Weight合計を計算
+        int totalWeight = 0;
+        foreach (var item in items)
+        {
+            totalWeight += item.Weight;
+        }
+
+        // 各アイテムのsweepAngleを計算（Weight比率ベース）
+        var currentAngle = rotationAngle - MathF.PI / 2f;
+
         for (var i = 0; i < items.Count; i++)
         {
-            var startAngle = rotationAngle + sweepAngle * i - MathF.PI / 2f;
+            // 現在のアイテムの角度（Weight比率から計算）
+            var sweepAngle = (2f * MathF.PI * items[i].Weight) / totalWeight;
+            var startAngle = currentAngle;
             var color = SECTOR_COLORS[i % SECTOR_COLORS.Length];
 
             DrawSector(session, cx, cy, radius, startAngle, sweepAngle, color);
@@ -125,6 +136,9 @@ internal static class RouletteRenderer
                 startAngle, sweepAngle,
                 items[i].Name,
                 fontSize);
+
+            // 次のアイテムの開始角度を設定
+            currentAngle += sweepAngle;
         }
 
         // 中心の装飾円

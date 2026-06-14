@@ -10,7 +10,7 @@ public class RouletteGroup
     public const int MAX_ITEM_COUNT = 30;
 
     /// <summary>グループ数（固定）。</summary>
-    public const int GROUP_COUNT = 3;
+    public const int GROUP_COUNT = 9;
 
     /// <summary>
     /// グループの識別子（1 始まり）を取得または設定します。
