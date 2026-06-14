@@ -335,8 +335,65 @@ public class MainViewModelTests
         // Assert
         Assert.Equal(3, result.Count);
         Assert.Equal("アイテムA", result[0].Name);
+        Assert.Equal(1, result[0].Weight);
         Assert.Equal("アイテムB", result[1].Name);
+        Assert.Equal(1, result[1].Weight);
         Assert.Equal("アイテムC", result[2].Name);
+        Assert.Equal(1, result[2].Weight);
+    }
+
+    [Fact]
+    public async Task ParseItems_CSV形式_Weightを設定できる()
+    {
+        // Act
+        var result = MainViewModel.ParseItems("アイテムA,5\nアイテムB,2\nアイテムC,1");
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        Assert.Equal("アイテムA", result[0].Name);
+        Assert.Equal(5, result[0].Weight);
+        Assert.Equal("アイテムB", result[1].Name);
+        Assert.Equal(2, result[1].Weight);
+        Assert.Equal("アイテムC", result[2].Name);
+        Assert.Equal(1, result[2].Weight);
+    }
+
+    [Fact]
+    public async Task ParseItems_Weight省略_デフォルト値1を使用する()
+    {
+        // Act
+        var result = MainViewModel.ParseItems("アイテムA,3\nアイテムB\nアイテムC,2");
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        Assert.Equal(3, result[0].Weight);
+        Assert.Equal(1, result[1].Weight); // 省略されたため1
+        Assert.Equal(2, result[2].Weight);
+    }
+
+    [Fact]
+    public async Task ParseItems_Weight非数値_デフォルト値1を使用する()
+    {
+        // Act
+        var result = MainViewModel.ParseItems("アイテムA,abc\nアイテムB,5");
+
+        // Assert
+        Assert.Equal(2, result.Count);
+        Assert.Equal(1, result[0].Weight); // 非数値なため1
+        Assert.Equal(5, result[1].Weight);
+    }
+
+    [Fact]
+    public async Task ParseItems_Weight範囲外_制限される()
+    {
+        // Act
+        var result = MainViewModel.ParseItems("アイテムA,10\nアイテムB,0\nアイテムC,-5");
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        Assert.Equal(5, result[0].Weight); // 最大5に制限
+        Assert.Equal(1, result[1].Weight); // 最小1に制限
+        Assert.Equal(1, result[2].Weight); // 最小1に制限
     }
 
     [Fact]
@@ -350,14 +407,33 @@ public class MainViewModelTests
     }
 
     [Fact]
-    public async Task FormatItems_アイテムリスト_改行区切りのテキストに変換できる()
+    public async Task FormatItems_アイテムリスト_CSV形式のテキストに変換できる()
     {
         // Act
-        var items = new List<RouletteItem> { new("アイテムA"), new("アイテムB") };
+        var items = new List<RouletteItem>
+        {
+            new("アイテムA") { Weight = 5 },
+            new("アイテムB") { Weight = 2 }
+        };
         var result = MainViewModel.FormatItems(items);
 
         // Assert
-        Assert.Equal("アイテムA\nアイテムB", result);
+        Assert.Equal("アイテムA,5\nアイテムB,2", result);
+    }
+
+    [Fact]
+    public async Task FormatItems_Weight1を含む_CSVで1を出力する()
+    {
+        // Act
+        var items = new List<RouletteItem>
+        {
+            new("アイテムA") { Weight = 1 },
+            new("アイテムB") { Weight = 3 }
+        };
+        var result = MainViewModel.FormatItems(items);
+
+        // Assert
+        Assert.Equal("アイテムA,1\nアイテムB,3", result);
     }
 
     // ---------------------------------------------------------------

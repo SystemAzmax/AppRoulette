@@ -461,7 +461,7 @@ namespace AppRoulette
         /// <summary>
         /// ContentDialogのボタンパネルを見つけます。
         /// </summary>
-        private StackPanel FindButtonsPanel(DependencyObject parent)
+        private StackPanel? FindButtonsPanel(DependencyObject parent)
         {
             if (parent == null)
                 return null;

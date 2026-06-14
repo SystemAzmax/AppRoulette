@@ -165,6 +165,7 @@ public class MainViewModel : ObservableObject
 
     /// <summary>
     /// ルーレットを回してアイテムをランダムに選択します。
+    /// 各アイテムの Weight 値に基づいて確率的に選択されます。
     /// </summary>
     private void Spin()
     {
@@ -173,7 +174,11 @@ public class MainViewModel : ObservableObject
             return;
         }
 
-        SelectedItemIndex = _randomService.Next(SelectedGroup.Items.Count);
+        var selectedItem = _randomService.SelectByWeight(SelectedGroup.Items);
+        if (selectedItem is not null)
+        {
+            SelectedItemIndex = SelectedGroup.Items.IndexOf(selectedItem);
+        }
     }
 
     /// <summary>
@@ -331,24 +336,48 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 改行区切りのテキストをアイテムリストに変換します。空行は除去します。
+    /// 改行区切りのテキストをアイテムリストに変換します。
+    /// CSV形式（アイテム名,Weight）に対応しており、Weightが省略された場合はデフォルト値1を使用します。
+    /// 
+    /// 形式例：
+    /// - "アイテムA" → Weight=1
+    /// - "アイテムA,5" → Weight=5
+    /// - "アイテムA,3\nアイテムB,1" → 複数アイテム
     /// </summary>
     /// <param name="text">変換元テキスト。</param>
     /// <returns>アイテムリスト。</returns>
     public static List<RouletteItem> ParseItems(string text) =>
         text.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.TrimEnd('\r').Trim())
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Select(name => new RouletteItem(name))
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Select(line =>
+            {
+                // CSV形式（名前,Weight）に解析
+                var parts = line.Split(',');
+                var name = parts[0].Trim();
+                var weight = 1; // デフォルト値
+
+                if (parts.Length > 1)
+                {
+                    if (int.TryParse(parts[1].Trim(), out var parsedWeight))
+                    {
+                        // Weight値を1～5の範囲に制限
+                        weight = Math.Max(1, Math.Min(5, parsedWeight));
+                    }
+                }
+
+                return new RouletteItem(name) { Weight = weight };
+            })
             .ToList();
 
     /// <summary>
-    /// アイテムリストを改行区切りのテキストに変換します。
+    /// アイテムリストを改行区切りのCSV形式テキストに変換します。
+    /// 各行は「アイテム名,Weight」の形式となります。
     /// </summary>
     /// <param name="items">変換元アイテムリスト。</param>
-    /// <returns>改行区切りのテキスト。</returns>
+    /// <returns>改行区切りのCSV形式テキスト。</returns>
     public static string FormatItems(IEnumerable<RouletteItem> items) =>
-        string.Join('\n', items.Select(i => i.Name));
+        string.Join('\n', items.Select(i => $"{i.Name},{i.Weight}"));
 
     /// <summary>
     /// テキストの行数を返します。空文字は 0 を返します。
