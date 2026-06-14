@@ -5,8 +5,10 @@ using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
 using Microsoft.UI;
+using System.Linq;
 
 namespace AppRoulette
 {
@@ -135,7 +137,7 @@ namespace AppRoulette
             _spinTimer.Tick += OnSpinTimerTick;
 
             // ウィンドウサイズを1200×800に設定
-            ExtendsContentIntoTitleBar = true;
+            ExtendsContentIntoTitleBar = false;
             AppWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
 
             // ウィンドウ位置情報を読み込んで、保存されているなら適用
@@ -356,16 +358,81 @@ namespace AppRoulette
 
             var selectedName = items[index].Name;
 
+            // ボタンを中央に配置するためのカスタムコンテンツ
+            var stackPanel = new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                Spacing = 16,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
+
+            var textBlock = new TextBlock
+            {
+                Text = $"「{selectedName}」が選ばれました！",
+                TextAlignment = TextAlignment.Center,
+                FontSize = 16,
+            };
+
+            var button = new Button
+            {
+                Content = "OK",
+                Width = 120,
+                Height = 44,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI 青色 (#0078D4)
+                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // 白色
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                FontSize = 14,
+            };
+
+            stackPanel.Children.Add(textBlock);
+            stackPanel.Children.Add(button);
+
             var dialog = new ContentDialog
             {
                 Title = "🎉 結果",
-                Content = $"「{selectedName}」が選ばれました！",
-                CloseButtonText = "OK",
-                DefaultButton = ContentDialogButton.Close,
+                Content = stackPanel,
                 XamlRoot = Content.XamlRoot,
+                CloseButtonText = string.Empty,
+            };
+
+            button.Click += (sender, e) =>
+            {
+                dialog.Hide();
             };
 
             await dialog.ShowAsync();
+        }
+
+        /// <summary>
+        /// ContentDialogのボタンパネルを見つけます。
+        /// </summary>
+        private StackPanel FindButtonsPanel(DependencyObject parent)
+        {
+            if (parent == null)
+                return null;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+
+                if (child is StackPanel stackPanel)
+                {
+                    // ボタンを含むStackPanelを探す
+                    if (stackPanel.Children.Any(c => c is Button))
+                    {
+                        return stackPanel;
+                    }
+                }
+
+                var result = FindButtonsPanel(child);
+                if (result != null)
+                    return result;
+            }
+
+            return null;
         }
 
         // ---------------------------------------------------------------

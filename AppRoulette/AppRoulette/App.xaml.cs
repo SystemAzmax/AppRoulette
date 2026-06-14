@@ -35,6 +35,43 @@ namespace AppRoulette
         public App()
         {
             InitializeComponent();
+
+            // アプリケーションアイコンを初期化
+            try
+            {
+                GenerateApplicationIcon();
+            }
+            catch
+            {
+                // アイコン生成に失敗しても続行
+            }
+        }
+
+        /// <summary>
+        /// アプリケーションアイコンを生成して保存します。
+        /// </summary>
+        private void GenerateApplicationIcon()
+        {
+            string assetsPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets");
+            string iconPath = System.IO.Path.Combine(assetsPath, "app.ico");
+
+            // Assetsフォルダが存在しなければ作成
+            if (!Directory.Exists(assetsPath))
+            {
+                Directory.CreateDirectory(assetsPath);
+            }
+
+            // アイコンが既に存在する場合はスキップ
+            if (File.Exists(iconPath))
+            {
+                return;
+            }
+
+            // ルーレットアイコンを生成
+            byte[] iconData = Services.AppIconService.GenerateRouletteIcon(256);
+
+            // ファイルに保存
+            File.WriteAllBytes(iconPath, iconData);
         }
 
         /// <summary>
@@ -44,6 +81,31 @@ namespace AppRoulette
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
             _window = new MainWindow();
+
+            // ウィンドウアイコンを設定
+            try
+            {
+                // 複数のアイコン候補を試す
+                string[] iconPaths = new[]
+                {
+                    System.IO.Path.Combine(AppContext.BaseDirectory, "Copilot_20260614_202528.ico"),
+                    System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico"),
+                };
+
+                foreach (string iconPath in iconPaths)
+                {
+                    if (File.Exists(iconPath))
+                    {
+                        _window.AppWindow.SetIcon(iconPath);
+                        break;
+                    }
+                }
+            }
+            catch
+            {
+                // アイコン設定に失敗しても続行
+            }
+
             _window.Activate();
         }
     }
