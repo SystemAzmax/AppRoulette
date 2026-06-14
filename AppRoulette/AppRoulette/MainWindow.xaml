@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:AppRoulette"
+    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -13,7 +14,85 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid>
+        <!--
+        ルート Grid: 左列（ルーレット）/ 区切り / 右列（入力パネル）
+    -->
+    <Grid Margin="16" Loaded="OnRootGridLoaded">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="320" />
+        </Grid.ColumnDefinitions>
 
+        <!-- ===== 左列：ルーレット描画エリア ===== -->
+        <Grid Grid.Column="0">
+
+            <!-- Win2D CanvasControl（フェーズ5で扇形描画を実装） -->
+            <canvas:CanvasControl
+                x:Name="RouletteCanvas"
+                Draw="RouletteCanvas_Draw"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch" />
+
+            <!-- 赤い三角インジケーター（3時方向・右辺中央） -->
+            <Polygon
+                Points="0,0 20,10 0,20"
+                Fill="Red"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Margin="0,0,0,0"
+                IsHitTestVisible="False" />
+
+        </Grid>
+
+        <!-- ===== 右列：入力パネル ===== -->
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="8" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- グループ ComboBox + アイテム数表示 -->
+            <StackPanel
+                Grid.Row="0"
+                Orientation="Horizontal"
+                Spacing="8"
+                VerticalAlignment="Center">
+
+                <ComboBox
+                    x:Name="GroupComboBox"
+                    ItemsSource="{x:Bind ViewModel.GroupList, Mode=OneWay}"
+                    SelectedItem="{x:Bind ViewModel.SelectedGroup, Mode=TwoWay}"
+                    DisplayMemberPath="DisplayName"
+                    MinWidth="160" />
+
+                <!-- アイテム数：「n 件」 -->
+                <StackPanel Orientation="Horizontal" Spacing="2"
+                            VerticalAlignment="Center">
+                    <TextBlock
+                        Text="{x:Bind ViewModel.ItemCount, Mode=OneWay}"
+                        VerticalAlignment="Center" />
+                    <TextBlock
+                        Text="件"
+                        VerticalAlignment="Center" />
+                </StackPanel>
+
+            </StackPanel>
+
+            <!-- アイテム入力テキストエリア（1行1アイテム） -->
+            <TextBox
+                Grid.Row="2"
+                Text="{x:Bind ViewModel.ItemsText,
+                    Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                FontFamily="Consolas"
+                PlaceholderText="1行1アイテムで入力してください（最大30件）" />
+
+        </Grid>
     </Grid>
 </Window>
