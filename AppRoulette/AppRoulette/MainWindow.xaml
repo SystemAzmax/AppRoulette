@@ -27,10 +27,11 @@
         <!-- ===== 左列：ルーレット描画エリア ===== -->
         <Grid Grid.Column="0">
 
-            <!-- Win2D CanvasControl（フェーズ5で扇形描画を実装） -->
+            <!-- Win2D CanvasControl（扇形描画） -->
             <canvas:CanvasControl
                 x:Name="RouletteCanvas"
                 Draw="RouletteCanvas_Draw"
+                Tapped="RouletteCanvas_Tapped"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch" />
 

@@ -1,9 +1,9 @@
 using AppRoulette.Services;
 using AppRoulette.ViewModels;
-using Microsoft.Graphics.Canvas;
+using AppRoulette.Views;
 using Microsoft.Graphics.Canvas.UI.Xaml;
-using Microsoft.UI;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Input;
 
 namespace AppRoulette
 {
@@ -28,6 +28,16 @@ namespace AppRoulette
             ViewModel = new MainViewModel(
                 new JsonDataPersistenceService(),
                 new RandomService());
+
+            ViewModel.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName is nameof(ViewModel.ItemCount)
+                                   or nameof(ViewModel.SelectedGroup)
+                                   or nameof(ViewModel.SelectedItemIndex))
+                {
+                    RouletteCanvas.Invalidate();
+                }
+            };
         }
 
         /// <summary>
@@ -42,7 +52,7 @@ namespace AppRoulette
 
         /// <summary>
         /// Win2D CanvasControl の描画イベントハンドラー。
-        /// フェーズ5で扇形ルーレットの描画ロジックを実装します。
+        /// <see cref="RouletteRenderer"/> に描画処理を委譲します。
         /// </summary>
         /// <param name="sender">描画対象の <see cref="CanvasControl"/>。</param>
         /// <param name="args">描画セッションを含む引数。</param>
@@ -53,29 +63,30 @@ namespace AppRoulette
             var size = (float)System.Math.Min(sender.ActualWidth, sender.ActualHeight);
             var cx = (float)(sender.ActualWidth / 2);
             var cy = (float)(sender.ActualHeight / 2);
-            var radius = size / 2f * 0.92f;
+            var radius = size / 2f * RouletteRenderer.RADIUS_RATIO;
 
-            using var session = args.DrawingSession;
+            var items = (IReadOnlyList<AppRoulette.Models.RouletteItem>?)
+                        ViewModel.SelectedGroup?.Items
+                        ?? System.Array.Empty<AppRoulette.Models.RouletteItem>();
 
-            // プレースホルダー：グレーの円（フェーズ5で扇形に置き換え）
-            session.FillCircle(cx, cy, radius,
-                Windows.UI.Color.FromArgb(255, 200, 200, 200));
-            session.DrawCircle(cx, cy, radius,
-                Windows.UI.Color.FromArgb(255, 120, 120, 120), 2f);
+            RouletteRenderer.Draw(
+                args.DrawingSession,
+                cx, cy, radius,
+                items);
+        }
 
-            // 中央の案内テキスト
-            session.DrawText(
-                "クリックして回転させる",
-                cx, cy,
-                Colors.Black,
-                new Microsoft.Graphics.Canvas.Text.CanvasTextFormat
-                {
-                    FontSize = 20,
-                    HorizontalAlignment =
-                        Microsoft.Graphics.Canvas.Text.CanvasHorizontalAlignment.Center,
-                    VerticalAlignment =
-                        Microsoft.Graphics.Canvas.Text.CanvasVerticalAlignment.Center,
-                });
+        /// <summary>
+        /// ルーレットキャンバスのタップイベントハンドラー。
+        /// アイテムが存在する場合にスピンコマンドを実行します。
+        /// </summary>
+        /// <param name="sender">タップされたキャンバス。</param>
+        /// <param name="e">タップイベント引数。</param>
+        private void RouletteCanvas_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            if (ViewModel.SpinCommand.CanExecute(null))
+            {
+                ViewModel.SpinCommand.Execute(null);
+            }
         }
     }
 }
