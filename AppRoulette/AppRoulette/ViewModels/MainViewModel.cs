@@ -124,6 +124,11 @@ public class MainViewModel : ObservableObject
     public IRelayCommand SpinCommand { get; }
 
     /// <summary>
+    /// 選択中のグループの全アイテムをクリアするコマンド。
+    /// </summary>
+    public IRelayCommand ClearItemsCommand { get; }
+
+    /// <summary>
     /// <see cref="MainViewModel"/> を初期化します。
     /// </summary>
     /// <param name="randomService">ランダム生成サービス。</param>
@@ -139,6 +144,7 @@ public class MainViewModel : ObservableObject
         _dataPersistence = dataPersistence;
         InitializeCommand = new AsyncRelayCommand(InitializeAsync);
         SpinCommand = new RelayCommand(Spin, CanSpin);
+        ClearItemsCommand = new RelayCommand(ClearItems);
     }
 
     /// <summary>
@@ -196,6 +202,54 @@ public class MainViewModel : ObservableObject
     /// アイテムが 1 件以上存在し、かつ回転中でない場合に <c>true</c>。
     /// </summary>
     private bool CanSpin() => ItemCount > 0 && !IsSpinning;
+
+    /// <summary>
+    /// 選択中のグループの全アイテムをクリアします。
+    /// アイテムをクリアした後、SQLite にも同期します。
+    /// </summary>
+    private void ClearItems()
+    {
+        if (SelectedGroup is null)
+        {
+            return;
+        }
+
+        SelectedGroup.Items.Clear();
+        ItemsText = string.Empty;
+        ItemCount = 0;
+        SelectedItemIndex = -1;
+
+        // Fire-and-forget: 非同期でSQLiteをクリア
+        _ = ClearItemsAsync().ContinueWith(
+            _ => { },
+            System.Threading.CancellationToken.None,
+            TaskContinuationOptions.None,
+            TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// 選択中のグループの全アイテムをSQLiteからも削除します。
+    /// </summary>
+    private async Task ClearItemsAsync()
+    {
+        if (SelectedGroup is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var dbItems = await _itemRepository.GetItemsByGroupAsync(SelectedGroup.Id);
+            foreach (var item in dbItems)
+            {
+                await _itemRepository.DeleteItemAsync(item.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _ = ex;
+        }
+    }
 
     /// <summary>
     /// <see cref="ItemsText"/> 変更時にアイテムリストとアイテム数を更新し、
