@@ -453,8 +453,9 @@ namespace AppRoulette
             }
 
             // 1行ごとに分割してインデックスのアイテムを見つける
-            var lines = text.Split(new[] { "\r\n", "\r", "\n" }, 
-                                   StringSplitOptions.None);
+            // StringSplitOptions.RemoveEmptyEntries で空行を除去
+            var lines = text.Split(new[] { "\r\n", "\n", "\r" }, 
+                                   StringSplitOptions.RemoveEmptyEntries);
 
             if (itemIndex >= lines.Length)
             {
@@ -462,21 +463,30 @@ namespace AppRoulette
             }
 
             // 現在のインデックスのアイテムのテキスト位置を計算
+            // 元のテキスト内で実際の位置を探す
+            int lineCount = 0;
             int startPosition = 0;
-            for (int i = 0; i < itemIndex; i++)
+            int i = 0;
+
+            while (i < text.Length && lineCount < itemIndex)
             {
-                startPosition += lines[i].Length;
-                // 元のテキスト内の改行を探して正確な位置を計算
-                if (startPosition < text.Length && text[startPosition] == '\r')
+                if (i + 1 < text.Length && text[i] == '\r' && text[i + 1] == '\n')
                 {
-                    startPosition += 2; // \r\n
+                    i += 2; // \r\n をスキップ
+                    lineCount++;
                 }
-                else if (startPosition < text.Length && 
-                         (text[startPosition] == '\n' || text[startPosition] == '\r'))
+                else if (text[i] == '\n' || text[i] == '\r')
                 {
-                    startPosition += 1; // \n または \r
+                    i += 1; // \n または \r をスキップ
+                    lineCount++;
+                }
+                else
+                {
+                    i++;
                 }
             }
+
+            startPosition = i;
 
             // テキストボックスでそのアイテムを選択状態にする
             ItemsTextBox.Focus(FocusState.Programmatic);
