@@ -95,39 +95,54 @@ namespace AppRoulette
 
             ViewModel.PropertyChanged += (_, e) =>
             {
-                // ルーレット再描画：アイテム数またはグループ変更時（ユーザー入力中もルーレットは更新）
-                if (e.PropertyName is nameof(ViewModel.ItemCount)
-                                   or nameof(ViewModel.SelectedGroup))
+                try
                 {
-                    _rotationAngle = 0f;
-                    RouletteCanvas.Invalidate();
-                }
-
-                // ItemsText 変更時もルーレットを再描画（テキストの内容は同じでも表示を更新）
-                if (e.PropertyName == nameof(ViewModel.ItemsText))
-                {
-                    RouletteCanvas.Invalidate();
-                }
-
-                // SelectedGroup 変更時に ComboBox を同期
-                if (e.PropertyName == nameof(ViewModel.SelectedGroup))
-                {
-                    GroupComboBox.SelectedItem = ViewModel.SelectedGroup;
-                }
-
-                // ItemsText 変更時に TextBox を同期（ユーザー入力中は無視）
-                // ユーザー入力中は TextBox が既に最新なので更新は不要
-                if (e.PropertyName == nameof(ViewModel.ItemsText) && !_isUserInput)
-                {
-                    _isUpdatingTextBox = true;
-                    try
+                    // ルーレット再描画：アイテム数またはグループ変更時（ユーザー入力中もルーレットは更新）
+                    if (e.PropertyName is nameof(ViewModel.ItemCount)
+                                       or nameof(ViewModel.SelectedGroup))
                     {
-                        ItemsTextBox.Text = ViewModel.ItemsText.Replace("\n", "\r\n");
+                        _rotationAngle = 0f;
+                        // デザイン時は RouletteCanvas が null の可能性がある
+                        RouletteCanvas?.Invalidate();
                     }
-                    finally
+
+                    // ItemsText 変更時もルーレットを再描画（テキストの内容は同じでも表示を更新）
+                    if (e.PropertyName == nameof(ViewModel.ItemsText))
                     {
-                        _isUpdatingTextBox = false;
+                        RouletteCanvas?.Invalidate();
                     }
+
+                    // SelectedGroup 変更時に ComboBox を同期
+                    if (e.PropertyName == nameof(ViewModel.SelectedGroup))
+                    {
+                        if (GroupComboBox != null)
+                        {
+                            GroupComboBox.SelectedItem = ViewModel.SelectedGroup;
+                        }
+                    }
+
+                    // ItemsText 変更時に TextBox を同期（ユーザー入力中は無視）
+                    // ユーザー入力中は TextBox が既に最新なので更新は不要
+                    if (e.PropertyName == nameof(ViewModel.ItemsText) && !_isUserInput)
+                    {
+                        if (ItemsTextBox != null)
+                        {
+                            _isUpdatingTextBox = true;
+                            try
+                            {
+                                ItemsTextBox.Text = ViewModel.ItemsText.Replace("\n", "\r\n");
+                            }
+                            finally
+                            {
+                                _isUpdatingTextBox = false;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // デザイン時や初期化時のエラーはサイレント処理
+                    System.Diagnostics.Debug.WriteLine($"PropertyChanged ハンドラ: {ex.Message}");
                 }
             };
 
@@ -137,46 +152,55 @@ namespace AppRoulette
             };
             _spinTimer.Tick += OnSpinTimerTick;
 
-            // ウィンドウサイズを1200×800に設定
-            ExtendsContentIntoTitleBar = false;
-            AppWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
-
-            // ウィンドウ位置情報を読み込んで、保存されているなら適用
-            _positionService = new WindowPositionService();
-            var savedPosition = _positionService.GetWindowPosition();
-
-            if (savedPosition != null)
+            try
             {
-                // 保存された位置がある場合は、Activated イベント時に適用
-                Activated += (sender, args) =>
+                // ウィンドウサイズを1200×800に設定
+                ExtendsContentIntoTitleBar = false;
+                AppWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
+
+                // ウィンドウ位置情報を読み込んで、保存されているなら適用
+                _positionService = new WindowPositionService();
+                var savedPosition = _positionService.GetWindowPosition();
+
+                if (savedPosition != null)
                 {
-                    if (args.WindowActivationState != WindowActivationState.Deactivated)
+                    // 保存された位置がある場合は、Activated イベント時に適用
+                    Activated += (sender, args) =>
                     {
-                        AppWindow.Move(new PointInt32(savedPosition.X, savedPosition.Y));
+                        if (args.WindowActivationState != WindowActivationState.Deactivated)
+                        {
+                            AppWindow.Move(new PointInt32(savedPosition.X, savedPosition.Y));
+                        }
+                    };
+                }
+
+                // ウィンドウを閉じる際に位置を保存
+                Closed += async (sender, args) =>
+                {
+                    try
+                    {
+                        var placement = AppWindow.Position;
+                        var currentPosition = new WindowPositionInfo
+                        {
+                            X = placement.X,
+                            Y = placement.Y,
+                            Width = AppWindow.Size.Width,
+                            Height = AppWindow.Size.Height,
+                        };
+                        await _positionService.SaveWindowPositionAsync(currentPosition);
+                    }
+                    catch
+                    {
+                        // 位置保存エラーは無視
                     }
                 };
             }
-
-            // ウィンドウを閉じる際に位置を保存
-            Closed += async (sender, args) =>
+            catch (Exception ex)
             {
-                try
-                {
-                    var placement = AppWindow.Position;
-                    var currentPosition = new WindowPositionInfo
-                    {
-                        X = placement.X,
-                        Y = placement.Y,
-                        Width = AppWindow.Size.Width,
-                        Height = AppWindow.Size.Height,
-                    };
-                    await _positionService.SaveWindowPositionAsync(currentPosition);
-                }
-                catch
-                {
-                    // 位置保存エラーは無視
-                }
-            };
+                // ウィンドウサイズ設定やイベントハンドラ登録エラーはサイレント処理
+                // これはデザイン時に発生する可能性があります
+                System.Diagnostics.Debug.WriteLine($"ウィンドウ初期化エラー: {ex.Message}");
+            }
         }
 
         // ---------------------------------------------------------------
@@ -429,8 +453,9 @@ namespace AppRoulette
             }
 
             // 1行ごとに分割してインデックスのアイテムを見つける
-            var lines = text.Split(new[] { "\r\n", "\r", "\n" }, 
-                                   StringSplitOptions.None);
+            // StringSplitOptions.RemoveEmptyEntries で空行を除去
+            var lines = text.Split(new[] { "\r\n", "\n", "\r" }, 
+                                   StringSplitOptions.RemoveEmptyEntries);
 
             if (itemIndex >= lines.Length)
             {
@@ -438,21 +463,30 @@ namespace AppRoulette
             }
 
             // 現在のインデックスのアイテムのテキスト位置を計算
+            // 元のテキスト内で実際の位置を探す
+            int lineCount = 0;
             int startPosition = 0;
-            for (int i = 0; i < itemIndex; i++)
+            int i = 0;
+
+            while (i < text.Length && lineCount < itemIndex)
             {
-                startPosition += lines[i].Length;
-                // 元のテキスト内の改行を探して正確な位置を計算
-                if (startPosition < text.Length && text[startPosition] == '\r')
+                if (i + 1 < text.Length && text[i] == '\r' && text[i + 1] == '\n')
                 {
-                    startPosition += 2; // \r\n
+                    i += 2; // \r\n をスキップ
+                    lineCount++;
                 }
-                else if (startPosition < text.Length && 
-                         (text[startPosition] == '\n' || text[startPosition] == '\r'))
+                else if (text[i] == '\n' || text[i] == '\r')
                 {
-                    startPosition += 1; // \n または \r
+                    i += 1; // \n または \r をスキップ
+                    lineCount++;
+                }
+                else
+                {
+                    i++;
                 }
             }
+
+            startPosition = i;
 
             // テキストボックスでそのアイテムを選択状態にする
             ItemsTextBox.Focus(FocusState.Programmatic);

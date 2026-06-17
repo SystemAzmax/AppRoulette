@@ -74,24 +74,14 @@ public class DatabaseInitializer
 
             try
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"[DatabaseInitializer] Starting DB initialization at: {GetDatabasePath()}");
-
                 // 同期的にデータベースを初期化
                 InitializeDatabase();
 
                 // 初期化完了フラグを設定
                 _isInitialized = true;
-
-                System.Diagnostics.Debug.WriteLine(
-                    $"[DatabaseInitializer] DB initialized successfully at: {GetDatabasePath()}");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"[DatabaseInitializer] DB initialization failed: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine(
-                    $"[DatabaseInitializer] Exception Details: {ex}");
                 throw;
             }
         }
@@ -106,17 +96,9 @@ public class DatabaseInitializer
     /// </summary>
     private static void InitializeDatabase()
     {
-        string dbPath = GetDatabasePath();
         string connectionString = GetConnectionString();
-
-        System.Diagnostics.Debug.WriteLine(
-            $"[DatabaseInitializer] Connecting to: {dbPath}");
-
         using var connection = new SqliteConnection(connectionString);
         connection.Open();
-
-        System.Diagnostics.Debug.WriteLine(
-            "[DatabaseInitializer] Connection opened successfully");
 
         using var command = connection.CreateCommand();
         command.CommandText = @"
@@ -127,20 +109,7 @@ public class DatabaseInitializer
                 [GroupId] INTEGER NOT NULL
             );";
 
-        int result = command.ExecuteNonQuery();
-
-        System.Diagnostics.Debug.WriteLine(
-            $"[DatabaseInitializer] CREATE TABLE executed, result: {result}");
-        System.Diagnostics.Debug.WriteLine(
-            "[DatabaseInitializer] Items table checked/created successfully");
-
-        // テーブル確認クエリ
-        using var checkCommand = connection.CreateCommand();
-        checkCommand.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='Items'";
-        var tableExists = checkCommand.ExecuteScalar();
-
-        System.Diagnostics.Debug.WriteLine(
-            $"[DatabaseInitializer] Table confirmation - Items table exists: {tableExists != null}");
+        _ = command.ExecuteNonQuery();
 
         connection.Close();
     }

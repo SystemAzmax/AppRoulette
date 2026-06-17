@@ -124,6 +124,11 @@ public class MainViewModel : ObservableObject
     public IRelayCommand SpinCommand { get; }
 
     /// <summary>
+    /// 選択中のグループの全アイテムをクリアするコマンド。
+    /// </summary>
+    public IRelayCommand ClearItemsCommand { get; }
+
+    /// <summary>
     /// <see cref="MainViewModel"/> を初期化します。
     /// </summary>
     /// <param name="randomService">ランダム生成サービス。</param>
@@ -139,6 +144,7 @@ public class MainViewModel : ObservableObject
         _dataPersistence = dataPersistence;
         InitializeCommand = new AsyncRelayCommand(InitializeAsync);
         SpinCommand = new RelayCommand(Spin, CanSpin);
+        ClearItemsCommand = new RelayCommand(ClearItems);
     }
 
     /// <summary>
@@ -198,6 +204,54 @@ public class MainViewModel : ObservableObject
     private bool CanSpin() => ItemCount > 0 && !IsSpinning;
 
     /// <summary>
+    /// 選択中のグループの全アイテムをクリアします。
+    /// アイテムをクリアした後、SQLite にも同期します。
+    /// </summary>
+    private void ClearItems()
+    {
+        if (SelectedGroup is null)
+        {
+            return;
+        }
+
+        SelectedGroup.Items.Clear();
+        ItemsText = string.Empty;
+        ItemCount = 0;
+        SelectedItemIndex = -1;
+
+        // Fire-and-forget: 非同期でSQLiteをクリア
+        _ = ClearItemsAsync().ContinueWith(
+            _ => { },
+            System.Threading.CancellationToken.None,
+            TaskContinuationOptions.None,
+            TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// 選択中のグループの全アイテムをSQLiteからも削除します。
+    /// </summary>
+    private async Task ClearItemsAsync()
+    {
+        if (SelectedGroup is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var dbItems = await _itemRepository.GetItemsByGroupAsync(SelectedGroup.Id);
+            foreach (var item in dbItems)
+            {
+                await _itemRepository.DeleteItemAsync(item.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _ = ex;
+        }
+    }
+
+    /// <summary>
     /// <see cref="ItemsText"/> 変更時にアイテムリストとアイテム数を更新し、
     /// 改行が増えた場合は非同期で SQLite に保存します。
     /// </summary>
@@ -219,16 +273,8 @@ public class MainViewModel : ObservableObject
         if (currentLineCount != previousLineCount)
         {
             // Fire-and-forget: テキスト変更時に非同期で SQLite に保存
-            // （例外はデバッグ出力）
             _ = OnItemsTextChangedAsync().ContinueWith(
-                t =>
-                {
-                    if (t.IsFaulted && t.Exception is not null)
-                    {
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[AppRoulette] 同期エラー: {t.Exception.InnerException}");
-                    }
-                },
+                _ => { },
                 System.Threading.CancellationToken.None,
                 TaskContinuationOptions.None,
                 TaskScheduler.Default);
@@ -282,14 +328,7 @@ public class MainViewModel : ObservableObject
         // グループIDを永続化（Fire-and-forget）
         _ = _dataPersistence.SaveLastSelectedGroupIdAsync(value.Id)
             .ContinueWith(
-                t =>
-                {
-                    if (t.IsFaulted && t.Exception is not null)
-                    {
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[AppRoulette] グループID保存エラー: {t.Exception.InnerException}");
-                    }
-                },
+                _ => { },
                 System.Threading.CancellationToken.None,
                 TaskContinuationOptions.None,
                 TaskScheduler.Default);
@@ -304,19 +343,7 @@ public class MainViewModel : ObservableObject
         await SyncItemsToSqliteAsync(group);
     }
 
-    /// <summary>
-    /// (このメソッドは使用されていません。SQLite 完全移行のため廃止予定)
-    /// </summary>
-    private async Task SaveAsync()
-    {
-        if (GroupList.Count == 0)
-        {
-            return;
-        }
 
-        // JSON は使用しない（SQLite のみ）
-        await Task.CompletedTask;
-    }
 
     /// <summary>
     /// グループの Items テキストを解析し、SQLite に同期します。
@@ -337,8 +364,6 @@ public class MainViewModel : ObservableObject
                 {
                     var newItem = new Item(item.Name, group.Id);
                     await _itemRepository.AddItemAsync(newItem);
-                    System.Diagnostics.Debug.WriteLine(
-                        $"[AppRoulette] Added item to SQLite: {item.Name} (GroupId={group.Id})");
                 }
             }
 
@@ -349,15 +374,12 @@ public class MainViewModel : ObservableObject
                 if (!memoryLabels.Contains(item.Label))
                 {
                     await _itemRepository.DeleteItemAsync(item.Id);
-                    System.Diagnostics.Debug.WriteLine(
-                        $"[AppRoulette] Deleted item from SQLite: {item.Label} (Id={item.Id})");
                 }
             }
         }
         catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine(
-                $"[AppRoulette] SyncItemsToSqliteAsync error: {ex.Message}");
+        {            // エラーはサイレントで処理（ユーザー入力中のため通知は不要）
+            _ = ex;
         }
     }
 
@@ -414,235 +436,4 @@ public class MainViewModel : ObservableObject
         string.IsNullOrEmpty(text)
             ? 0
             : text.Split('\n').Length;
-}
-
-/// <summary>
-/// IItemRepository の利用例と XAML ViewModel 統合用のユーティリティクラス。
-/// データベースの Items テーブルとの CRUD 操作を行い、
-/// ObservableCollection により XAML にバインド可能な形で提供します。
-/// </summary>
-public class ItemRepositoryViewModel : ObservableObject
-{
-    private readonly IItemRepository _repository;
-    private ObservableCollection<Item> _items = new();
-
-    /// <summary>
-    /// データベースから取得したアイテムのコレクション。
-    /// XAML の ListBox や DataGrid にバインド可能です。
-    /// </summary>
-    public ObservableCollection<Item> Items
-    {
-        get => _items;
-        private set => SetProperty(ref _items, value);
-    }
-
-    private Item? _selectedItem;
-
-    /// <summary>
-    /// 選択中のアイテム。
-    /// </summary>
-    public Item? SelectedItem
-    {
-        get => _selectedItem;
-        set => SetProperty(ref _selectedItem, value);
-    }
-
-    private string _newItemLabel = string.Empty;
-
-    /// <summary>
-    /// 新規追加予定のアイテムラベル。
-    /// </summary>
-    public string NewItemLabel
-    {
-        get => _newItemLabel;
-        set => SetProperty(ref _newItemLabel, value);
-    }
-
-    // Note: Weight は現在未実装のため、常に 1 に固定されます。
-    // 将来的に Weight 設定機能が追加される場合はここで実装します。
-    // private int _newItemWeight = 1;
-    // public int NewItemWeight { ... }
-
-    private int _currentGroupId = 1;
-
-    /// <summary>
-    /// 操作対象のグループ ID。
-    /// </summary>
-    public int CurrentGroupId
-    {
-        get => _currentGroupId;
-        set => SetProperty(ref _currentGroupId, value);
-    }
-
-    /// <summary>
-    /// ItemRepositoryViewModel を初期化します。
-    /// </summary>
-    public ItemRepositoryViewModel()
-    {
-        _repository = new SqliteItemRepository();
-    }
-
-    /// <summary>
-    /// データベースからアイテムを読み込み、ObservableCollection に展開します。
-    /// XAML ViewModel の初期化時に呼び出します。
-    /// </summary>
-    public async Task LoadItemsAsync()
-    {
-        try
-        {
-            var items = await _repository.GetItemsByGroupAsync(CurrentGroupId);
-            Items.Clear();
-            foreach (var item in items)
-            {
-                Items.Add(item);
-            }
-
-            System.Diagnostics.Debug.WriteLine(
-                $"[ItemRepositoryViewModel] Loaded {items.Count} items from group {CurrentGroupId}");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine(
-                $"[ItemRepositoryViewModel] LoadItemsAsync error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 新しいアイテムをデータベースに追加します。
-    /// </summary>
-    public async Task AddItemAsync()
-    {
-        if (string.IsNullOrWhiteSpace(NewItemLabel))
-        {
-            System.Diagnostics.Debug.WriteLine(
-                "[ItemRepositoryViewModel] Cannot add item with empty label");
-            return;
-        }
-
-        try
-        {
-            // Weight は常に 1 に固定
-            var newItem = new Item(NewItemLabel, CurrentGroupId);
-            int insertedId = await _repository.AddItemAsync(newItem);
-
-            newItem.Id = insertedId;
-            Items.Add(newItem);
-
-            NewItemLabel = string.Empty;
-
-            System.Diagnostics.Debug.WriteLine(
-                $"[ItemRepositoryViewModel] Added item: {newItem}");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine(
-                $"[ItemRepositoryViewModel] AddItemAsync error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 選択中のアイテムを削除します。
-    /// </summary>
-    public async Task DeleteSelectedItemAsync()
-    {
-        if (SelectedItem == null)
-        {
-            System.Diagnostics.Debug.WriteLine(
-                "[ItemRepositoryViewModel] No item selected for deletion");
-            return;
-        }
-
-        try
-        {
-            int deletedCount = await _repository.DeleteItemAsync(SelectedItem.Id);
-            if (deletedCount > 0)
-            {
-                Items.Remove(SelectedItem);
-                System.Diagnostics.Debug.WriteLine(
-                    $"[ItemRepositoryViewModel] Deleted item: {SelectedItem}");
-            }
-
-            SelectedItem = null;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine(
-                $"[ItemRepositoryViewModel] DeleteSelectedItemAsync error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 選択中のアイテムを更新します。
-    /// </summary>
-    public async Task UpdateSelectedItemAsync()
-    {
-        if (SelectedItem == null)
-        {
-            System.Diagnostics.Debug.WriteLine(
-                "[ItemRepositoryViewModel] No item selected for update");
-            return;
-        }
-
-        try
-        {
-            int updatedCount = await _repository.UpdateItemAsync(SelectedItem);
-            System.Diagnostics.Debug.WriteLine(
-                $"[ItemRepositoryViewModel] Updated {updatedCount} item(s): {SelectedItem}");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine(
-                $"[ItemRepositoryViewModel] UpdateSelectedItemAsync error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// グループ内のすべてのアイテムを削除します。
-    /// </summary>
-    public async Task DeleteAllItemsInGroupAsync()
-    {
-        try
-        {
-            int deletedCount = await _repository.DeleteItemsByGroupAsync(CurrentGroupId);
-            Items.Clear();
-
-            System.Diagnostics.Debug.WriteLine(
-                $"[ItemRepositoryViewModel] Deleted {deletedCount} items from group {CurrentGroupId}");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine(
-                $"[ItemRepositoryViewModel] DeleteAllItemsInGroupAsync error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 使用例を示すコメント。
-    /// XAML ViewModel への組み込み例：
-    /// 
-    /// public sealed partial class MainWindow : Window
-    /// {
-    ///     private ItemRepositoryViewModel _itemViewModel = new();
-    /// 
-    ///     public MainWindow()
-    ///     {
-    ///         InitializeComponent();
-    ///         Loaded += async (s, e) => await _itemViewModel.LoadItemsAsync();
-    ///     }
-    /// }
-    /// 
-    /// XAML:
-    /// &lt;ListBox ItemsSource="{Binding _itemViewModel.Items}" /&gt;
-    /// &lt;Button Content="Add" Click="AddButton_Click" /&gt;
-    /// 
-    /// コードビハインド:
-    /// private async void AddButton_Click(object sender, RoutedEventArgs e)
-    /// {
-    ///     await _itemViewModel.AddItemAsync();
-    /// }
-    /// </summary>
-    private static void UsageExample()
-    {
-        // 使用例をここに記載
-    }
 }

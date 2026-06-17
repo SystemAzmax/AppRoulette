@@ -85,25 +85,15 @@ namespace AppRoulette
             _window = new MainWindow();
 
             // データベースを初期化（ウィンドウ作成後に実行）
-            System.Diagnostics.Debug.WriteLine("[App] Starting database initialization...");
             try
             {
                 // 同期的に初期化を実行
                 await DatabaseInitializer.InitializeAsync();
-                string dbPath = DatabaseInitializer.GetDatabasePath();
-                System.Diagnostics.Debug.WriteLine(
-                    $"[App] ✅ Database initialized successfully");
-                System.Diagnostics.Debug.WriteLine(
-                    $"[App] DB Path: {dbPath}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"[App] ❌ Database initialization failed!");
-                System.Diagnostics.Debug.WriteLine(
-                    $"[App] Error: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine(
-                    $"[App] StackTrace: {ex.StackTrace}");
+                // エラーをサイレントで処理
+                _ = ex;
             }
 
             // ウィンドウアイコンを設定
