@@ -160,9 +160,9 @@ namespace AppRoulette
 
             try
             {
-                // ウィンドウサイズを1200×800に設定
+                // ウィンドウサイズを1300×850に設定
                 ExtendsContentIntoTitleBar = false;
-                AppWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
+                AppWindow.Resize(new Windows.Graphics.SizeInt32(1300, 850));
                 UpdateGroupNameUnsavedVisualState();
 
                 // ウィンドウ位置情報を読み込んで、保存されているなら適用
@@ -561,6 +561,45 @@ namespace AppRoulette
         {
             var f = 1f - t;
             return 1f - f * f * f;
+        }
+
+        /// <summary>
+        /// 表形式編集 UI の名前入力変更を ViewModel に反映します。
+        /// </summary>
+        /// <param name="sender">テキストボックス。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnEditableItemTextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is not TextBox textBox || textBox.DataContext is not RouletteItem item)
+            {
+                return;
+            }
+
+            ViewModel.SelectedEditableItem = item;
+            if (item.Name != textBox.Text)
+            {
+                item.Name = textBox.Text;
+            }
+        }
+
+        /// <summary>
+        /// 表形式編集 UI の Weight 入力変更を ViewModel に反映します。
+        /// </summary>
+        /// <param name="sender">NumberBox。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnEditableItemWeightChanged(NumberBox sender, NumberBoxValueChangedEventArgs e)
+        {
+            if (sender.DataContext is not RouletteItem item || double.IsNaN(sender.Value))
+            {
+                return;
+            }
+
+            ViewModel.SelectedEditableItem = item;
+            var weight = (int)Math.Round(sender.Value);
+            if (item.Weight != weight)
+            {
+                item.Weight = weight;
+            }
         }
 
         /// <summary>

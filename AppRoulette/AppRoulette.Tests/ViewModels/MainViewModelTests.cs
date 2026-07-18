@@ -741,6 +741,118 @@ public class MainViewModelTests
     }
 
     // ---------------------------------------------------------------
+    // 表形式編集
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public async Task InitializeAsync_SQLiteのItems_EditableItemsに復元される()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        fakeRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", weight: 4, groupId: 1),
+            new("アイテムB", weight: 2, groupId: 1),
+        });
+        var sut = CreateSut(customRepository: fakeRepo);
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(2, sut.EditableItems.Count);
+        Assert.Equal("アイテムA", sut.EditableItems[0].Name);
+        Assert.Equal(4, sut.EditableItems[0].Weight);
+        Assert.Equal("アイテムB", sut.EditableItems[1].Name);
+        Assert.Equal(2, sut.EditableItems[1].Weight);
+    }
+
+    [Fact]
+    public async Task AddItemRowCommand_実行した場合_ItemsTextとSelectedGroupに反映される()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.AddItemRowCommand.Execute(null);
+
+        // Assert
+        Assert.Single(sut.EditableItems);
+        Assert.Equal("新しいアイテム", sut.EditableItems[0].Name);
+        Assert.Equal("新しいアイテム,1", sut.ItemsText);
+        Assert.Single(sut.SelectedGroup!.Items);
+        Assert.Equal("新しいアイテム", sut.SelectedGroup.Items[0].Name);
+    }
+
+    [Fact]
+    public async Task EditableItems_名前とWeightを変更した場合_ItemsTextとSelectedGroupに反映される()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.ItemsText = "アイテムA,1";
+
+        // Act
+        sut.EditableItems[0].Name = "アイテムB";
+        sut.EditableItems[0].Weight = 5;
+
+        // Assert
+        Assert.Equal("アイテムB,5", sut.ItemsText);
+        Assert.Equal("アイテムB", sut.SelectedGroup!.Items[0].Name);
+        Assert.Equal(5, sut.SelectedGroup.Items[0].Weight);
+    }
+
+    [Fact]
+    public async Task EditableItems_重複名がある場合_状態表示に重複が表示される()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.ItemsText = "アイテムA,1\nアイテムA,3";
+
+        // Assert
+        Assert.Contains("重複: アイテムA", sut.ItemEditStatusText);
+    }
+
+    [Fact]
+    public async Task EditableItems_最大件数の場合_追加不可と状態表示になる()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.ItemsText = string.Join('\n', Enumerable.Range(1, RouletteGroup.MAX_ITEM_COUNT)
+            .Select(i => $"アイテム{i},1"));
+
+        // Assert
+        Assert.Equal(RouletteGroup.MAX_ITEM_COUNT, sut.EditableItems.Count);
+        Assert.Contains($"最大{RouletteGroup.MAX_ITEM_COUNT}件", sut.ItemEditStatusText);
+        Assert.False(sut.AddItemRowCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task SortItemsCommand_実行した場合_名前順に並び替える()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.ItemsText = "C,1\nA,1\nB,1";
+
+        // Act
+        sut.SortItemsCommand.Execute(null);
+
+        // Assert
+        Assert.Equal("A,1\nB,1\nC,1", sut.ItemsText);
+        Assert.Equal("A", sut.SelectedGroup!.Items[0].Name);
+        Assert.Equal("B", sut.SelectedGroup.Items[1].Name);
+        Assert.Equal("C", sut.SelectedGroup.Items[2].Name);
+    }
+
+    // ---------------------------------------------------------------
     // CountLines
     // ---------------------------------------------------------------
 

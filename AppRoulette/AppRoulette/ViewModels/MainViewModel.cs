@@ -2,7 +2,9 @@ using AppRoulette.Models;
 using AppRoulette.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Collections.Specialized;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Threading;
 
 namespace AppRoulette.ViewModels;
@@ -23,6 +25,8 @@ public class MainViewModel : ObservableObject
 
     private const string SAVE_STATUS_FAILED = "保存失敗";
 
+    private const string DEFAULT_NEW_ITEM_NAME = "新しいアイテム";
+
     private readonly IRandomService _randomService;
     private readonly IItemRepository _itemRepository;
     private readonly IGroupRepository _groupRepository;
@@ -37,7 +41,12 @@ public class MainViewModel : ObservableObject
     private ObservableCollection<RouletteGroup> _groupList =
         new();
 
+    private ObservableCollection<RouletteItem> _editableItems =
+        new();
+
     private RouletteGroup? _selectedGroup;
+
+    private RouletteItem? _selectedEditableItem;
 
     private string _itemsText = string.Empty;
 
@@ -51,7 +60,13 @@ public class MainViewModel : ObservableObject
 
     private string _saveStatusText = SAVE_STATUS_SAVED;
 
+    private string _itemEditStatusText = string.Empty;
+
     private bool _isGroupNameUnsaved;
+
+    private bool _isSyncingItemsText;
+
+    private bool _isSyncingEditableItems;
 
     /// <summary>
     /// ComboBox に表示するグループ一覧を取得します。
@@ -60,6 +75,15 @@ public class MainViewModel : ObservableObject
     {
         get => _groupList;
         private set => SetProperty(ref _groupList, value);
+    }
+
+    /// <summary>
+    /// 表形式編集 UI に表示するアイテム一覧を取得します。
+    /// </summary>
+    public ObservableCollection<RouletteItem> EditableItems
+    {
+        get => _editableItems;
+        private set => SetProperty(ref _editableItems, value);
     }
 
     /// <summary>
@@ -80,6 +104,21 @@ public class MainViewModel : ObservableObject
                 MoveGroupUpCommand.NotifyCanExecuteChanged();
                 MoveGroupDownCommand.NotifyCanExecuteChanged();
                 OnSelectedGroupChanged(value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 表形式編集 UI で選択中のアイテムを取得または設定します。
+    /// </summary>
+    public RouletteItem? SelectedEditableItem
+    {
+        get => _selectedEditableItem;
+        set
+        {
+            if (SetProperty(ref _selectedEditableItem, value))
+            {
+                UpdateItemEditCommandStates();
             }
         }
     }
@@ -167,6 +206,15 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 表形式編集 UI の入力状態や警告メッセージを取得します。
+    /// </summary>
+    public string ItemEditStatusText
+    {
+        get => _itemEditStatusText;
+        private set => SetProperty(ref _itemEditStatusText, value);
+    }
+
+    /// <summary>
     /// 選択中グループ名の入力欄に未保存の変更があるかどうかを取得します。
     /// </summary>
     public bool IsGroupNameUnsaved
@@ -224,6 +272,24 @@ public class MainViewModel : ObservableObject
     /// </summary>
     public IAsyncRelayCommand MoveGroupDownCommand { get; }
 
+    /// <summary>表形式編集 UI に新しいアイテム行を追加するコマンド。</summary>
+    public IRelayCommand AddItemRowCommand { get; }
+
+    /// <summary>表形式編集 UI の選択行を削除するコマンド。</summary>
+    public IRelayCommand DeleteSelectedItemRowCommand { get; }
+
+    /// <summary>表形式編集 UI の選択行を1つ上へ移動するコマンド。</summary>
+    public IRelayCommand MoveItemRowUpCommand { get; }
+
+    /// <summary>表形式編集 UI の選択行を1つ下へ移動するコマンド。</summary>
+    public IRelayCommand MoveItemRowDownCommand { get; }
+
+    /// <summary>表形式編集 UI のアイテムを名前順に並び替えるコマンド。</summary>
+    public IRelayCommand SortItemsCommand { get; }
+
+    /// <summary>表形式編集 UI のアイテムをシャッフルするコマンド。</summary>
+    public IRelayCommand ShuffleItemsCommand { get; }
+
     /// <summary>
     /// <see cref="MainViewModel"/> を初期化します。
     /// </summary>
@@ -253,6 +319,14 @@ public class MainViewModel : ObservableObject
         DeleteGroupCommand = new AsyncRelayCommand(DeleteGroupAsync, CanDeleteGroup);
         MoveGroupUpCommand = new AsyncRelayCommand(MoveGroupUpAsync, CanMoveGroupUp);
         MoveGroupDownCommand = new AsyncRelayCommand(MoveGroupDownAsync, CanMoveGroupDown);
+        AddItemRowCommand = new RelayCommand(AddItemRow, CanAddItemRow);
+        DeleteSelectedItemRowCommand = new RelayCommand(DeleteSelectedItemRow, CanDeleteSelectedItemRow);
+        MoveItemRowUpCommand = new RelayCommand(MoveItemRowUp, CanMoveItemRowUp);
+        MoveItemRowDownCommand = new RelayCommand(MoveItemRowDown, CanMoveItemRowDown);
+        SortItemsCommand = new RelayCommand(SortItems, CanReorderItems);
+        ShuffleItemsCommand = new RelayCommand(ShuffleItems, CanReorderItems);
+
+        EditableItems.CollectionChanged += EditableItems_CollectionChanged;
     }
 
     /// <summary>
@@ -582,6 +656,331 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 表形式編集 UI に新しいアイテム行を追加します。
+    /// </summary>
+    private void AddItemRow()
+    {
+        if (!CanAddItemRow())
+        {
+            return;
+        }
+
+        var item = new RouletteItem(CreateNewItemName());
+        item.PropertyChanged += EditableItem_PropertyChanged;
+        EditableItems.Add(item);
+        SelectedEditableItem = item;
+        ApplyEditableItemsToSelectedGroup();
+    }
+
+    /// <summary>
+    /// 表形式編集 UI にアイテム行を追加できるかどうかを返します。
+    /// </summary>
+    private bool CanAddItemRow() =>
+        SelectedGroup is not null && EditableItems.Count < RouletteGroup.MAX_ITEM_COUNT;
+
+    /// <summary>
+    /// 選択中のアイテム行を削除します。
+    /// </summary>
+    private void DeleteSelectedItemRow()
+    {
+        if (SelectedEditableItem is null)
+        {
+            return;
+        }
+
+        var index = EditableItems.IndexOf(SelectedEditableItem);
+        EditableItems.Remove(SelectedEditableItem);
+        SelectedEditableItem = EditableItems.Count == 0
+            ? null
+            : EditableItems[Math.Min(index, EditableItems.Count - 1)];
+        ApplyEditableItemsToSelectedGroup();
+    }
+
+    /// <summary>
+    /// 選択中のアイテム行を削除できるかどうかを返します。
+    /// </summary>
+    private bool CanDeleteSelectedItemRow() => SelectedEditableItem is not null;
+
+    /// <summary>
+    /// 選択中のアイテム行を1つ上へ移動します。
+    /// </summary>
+    private void MoveItemRowUp()
+    {
+        MoveSelectedItemRow(-1);
+    }
+
+    /// <summary>
+    /// 選択中のアイテム行を1つ下へ移動します。
+    /// </summary>
+    private void MoveItemRowDown()
+    {
+        MoveSelectedItemRow(1);
+    }
+
+    /// <summary>
+    /// 選択中のアイテム行を指定方向へ移動します。
+    /// </summary>
+    /// <param name="direction">移動方向。上へは -1、下へは 1。</param>
+    private void MoveSelectedItemRow(int direction)
+    {
+        if (SelectedEditableItem is null)
+        {
+            return;
+        }
+
+        var oldIndex = EditableItems.IndexOf(SelectedEditableItem);
+        var newIndex = oldIndex + direction;
+        if (oldIndex < 0 || newIndex < 0 || newIndex >= EditableItems.Count)
+        {
+            return;
+        }
+
+        EditableItems.Move(oldIndex, newIndex);
+        ApplyEditableItemsToSelectedGroup();
+    }
+
+    /// <summary>
+    /// 選択中のアイテム行を上へ移動できるかどうかを返します。
+    /// </summary>
+    private bool CanMoveItemRowUp() =>
+        SelectedEditableItem is not null && EditableItems.IndexOf(SelectedEditableItem) > 0;
+
+    /// <summary>
+    /// 選択中のアイテム行を下へ移動できるかどうかを返します。
+    /// </summary>
+    private bool CanMoveItemRowDown() =>
+        SelectedEditableItem is not null
+        && EditableItems.IndexOf(SelectedEditableItem) >= 0
+        && EditableItems.IndexOf(SelectedEditableItem) < EditableItems.Count - 1;
+
+    /// <summary>
+    /// アイテムを名前順に並び替えます。
+    /// </summary>
+    private void SortItems()
+    {
+        var sortedItems = EditableItems
+            .OrderBy(item => item.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(CloneItem)
+            .ToList();
+        ReplaceEditableItems(sortedItems);
+        SelectedEditableItem = EditableItems.FirstOrDefault();
+        ApplyEditableItemsToSelectedGroup();
+    }
+
+    /// <summary>
+    /// アイテムをランダム順に並び替えます。
+    /// </summary>
+    private void ShuffleItems()
+    {
+        for (var i = EditableItems.Count - 1; i > 0; i--)
+        {
+            var j = _randomService.Next(i + 1);
+            EditableItems.Move(i, j);
+        }
+
+        ApplyEditableItemsToSelectedGroup();
+    }
+
+    /// <summary>
+    /// アイテムの並び替え操作が可能かどうかを返します。
+    /// </summary>
+    private bool CanReorderItems() => EditableItems.Count > 1;
+
+    /// <summary>
+    /// 表形式編集 UI の各コマンドの実行可否を更新します。
+    /// </summary>
+    private void UpdateItemEditCommandStates()
+    {
+        AddItemRowCommand.NotifyCanExecuteChanged();
+        DeleteSelectedItemRowCommand.NotifyCanExecuteChanged();
+        MoveItemRowUpCommand.NotifyCanExecuteChanged();
+        MoveItemRowDownCommand.NotifyCanExecuteChanged();
+        SortItemsCommand.NotifyCanExecuteChanged();
+        ShuffleItemsCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// 表形式編集 UI の状態表示とコマンド状態を更新します。
+    /// </summary>
+    private void UpdateItemEditState()
+    {
+        var duplicateNames = EditableItems
+            .Select(item => item.Name.Trim())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .GroupBy(name => name, StringComparer.CurrentCultureIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .Take(3)
+            .ToList();
+
+        var messages = new List<string>();
+        if (EditableItems.Count >= RouletteGroup.MAX_ITEM_COUNT)
+        {
+            messages.Add($"最大{RouletteGroup.MAX_ITEM_COUNT}件です");
+        }
+
+        if (duplicateNames.Count > 0)
+        {
+            messages.Add($"重複: {string.Join(", ", duplicateNames)}");
+        }
+
+        ItemEditStatusText = string.Join(" / ", messages);
+        UpdateItemEditCommandStates();
+    }
+
+    /// <summary>
+    /// 表形式編集 UI の内容を選択中グループ、テキスト、保存処理へ反映します。
+    /// </summary>
+    private void ApplyEditableItemsToSelectedGroup()
+    {
+        if (_isSyncingEditableItems || SelectedGroup is null)
+        {
+            return;
+        }
+
+        var items = EditableItems
+            .Where(item => !string.IsNullOrWhiteSpace(item.Name))
+            .Take(RouletteGroup.MAX_ITEM_COUNT)
+            .Select(CloneItem)
+            .ToList();
+
+        SelectedGroup.Items = items;
+        ItemCount = items.Count;
+        SelectedItemIndex = -1;
+        SetItemsTextWithoutParsing(items);
+        UpdateItemEditState();
+        ScheduleItemsSave(SelectedGroup);
+    }
+
+    /// <summary>
+    /// アイテム一覧を表形式編集 UI へ反映します。
+    /// </summary>
+    /// <param name="items">反映するアイテム一覧。</param>
+    private void ReplaceEditableItems(IEnumerable<RouletteItem> items)
+    {
+        _isSyncingEditableItems = true;
+        try
+        {
+            foreach (var item in EditableItems)
+            {
+                item.PropertyChanged -= EditableItem_PropertyChanged;
+            }
+
+            EditableItems.Clear();
+            foreach (var item in items.Take(RouletteGroup.MAX_ITEM_COUNT).Select(CloneItem))
+            {
+                item.PropertyChanged += EditableItem_PropertyChanged;
+                EditableItems.Add(item);
+            }
+        }
+        finally
+        {
+            _isSyncingEditableItems = false;
+        }
+
+        SelectedEditableItem = EditableItems.FirstOrDefault();
+        UpdateItemEditState();
+    }
+
+    /// <summary>
+    /// テキスト入力の再解析を行わずに <see cref="ItemsText"/> を更新します。
+    /// </summary>
+    /// <param name="items">テキスト化するアイテム一覧。</param>
+    private void SetItemsTextWithoutParsing(IEnumerable<RouletteItem> items)
+    {
+        var text = FormatItems(items);
+        _isSyncingItemsText = true;
+        try
+        {
+            ItemsText = text;
+        }
+        finally
+        {
+            _isSyncingItemsText = false;
+        }
+
+        _previousItemsText = text;
+    }
+
+    /// <summary>
+    /// 編集用アイテムコレクションの変更を処理します。
+    /// </summary>
+    private void EditableItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (RouletteItem item in e.OldItems)
+            {
+                item.PropertyChanged -= EditableItem_PropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (RouletteItem item in e.NewItems)
+            {
+                item.PropertyChanged -= EditableItem_PropertyChanged;
+                item.PropertyChanged += EditableItem_PropertyChanged;
+            }
+        }
+
+        if (!_isSyncingEditableItems)
+        {
+            UpdateItemEditState();
+        }
+    }
+
+    /// <summary>
+    /// 表形式編集 UI の行プロパティ変更を処理します。
+    /// </summary>
+    private void EditableItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!_isSyncingEditableItems)
+        {
+            ApplyEditableItemsToSelectedGroup();
+        }
+    }
+
+    /// <summary>
+    /// 新規アイテム行の重複しない既定名を作成します。
+    /// </summary>
+    private string CreateNewItemName()
+    {
+        if (EditableItems.All(item => !string.Equals(
+                item.Name,
+                DEFAULT_NEW_ITEM_NAME,
+                StringComparison.CurrentCultureIgnoreCase)))
+        {
+            return DEFAULT_NEW_ITEM_NAME;
+        }
+
+        for (var i = 2; i <= RouletteGroup.MAX_ITEM_COUNT; i++)
+        {
+            var name = $"{DEFAULT_NEW_ITEM_NAME}{i}";
+            if (EditableItems.All(item => !string.Equals(
+                    item.Name,
+                    name,
+                    StringComparison.CurrentCultureIgnoreCase)))
+            {
+                return name;
+            }
+        }
+
+        return DEFAULT_NEW_ITEM_NAME;
+    }
+
+    /// <summary>
+    /// アイテムの編集用コピーを作成します。
+    /// </summary>
+    /// <param name="item">コピー元アイテム。</param>
+    /// <returns>コピーされたアイテム。</returns>
+    private static RouletteItem CloneItem(RouletteItem item) =>
+        new(item.Name)
+        {
+            Weight = item.Weight,
+        };
+
+    /// <summary>
     /// 選択中のグループの全アイテムをクリアします。
     /// アイテムをクリアした後、SQLite にも同期します。
     /// </summary>
@@ -594,6 +993,7 @@ public class MainViewModel : ObservableObject
 
         SelectedGroup.Items.Clear();
         ItemsText = string.Empty;
+        ReplaceEditableItems(Array.Empty<RouletteItem>());
         ItemCount = 0;
         SelectedItemIndex = -1;
 
@@ -607,14 +1007,24 @@ public class MainViewModel : ObservableObject
     /// <param name="value">変更後のテキスト。</param>
     private void OnItemsTextChanged(string value)
     {
+        if (_isSyncingItemsText)
+        {
+            return;
+        }
+
         if (SelectedGroup is null)
         {
             return;
         }
 
-        var items = ParseItems(value);
+        var parsedItems = ParseItems(value);
+        var items = parsedItems
+            .Take(RouletteGroup.MAX_ITEM_COUNT)
+            .ToList();
         SelectedGroup.Items = items;
+        ReplaceEditableItems(items);
         ItemCount = items.Count;
+        SelectedItemIndex = -1;
 
         if (value != _previousItemsText)
         {
@@ -712,6 +1122,7 @@ public class MainViewModel : ObservableObject
         {
             _previousItemsText = string.Empty;
             ItemsText = string.Empty;
+            ReplaceEditableItems(Array.Empty<RouletteItem>());
             GroupNameText = string.Empty;
             UpdateGroupNameUnsavedState();
             ItemCount = 0;
@@ -722,6 +1133,7 @@ public class MainViewModel : ObservableObject
         UpdateGroupNameUnsavedState();
         var text = FormatItems(value.Items);
         _previousItemsText = text;
+        ReplaceEditableItems(value.Items);
         ItemsText = text;
         ItemCount = value.Items.Count;
         SelectedItemIndex = -1;

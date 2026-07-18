@@ -21,7 +21,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="16" />
-            <ColumnDefinition Width="320" />
+            <ColumnDefinition Width="420" />
         </Grid.ColumnDefinitions>
 
         <!-- ===== 左列：ルーレット描画エリア ===== -->
@@ -178,18 +178,166 @@
 
             </Grid>
 
-            <!-- アイテム入力テキストエリア（1行1アイテム） -->
-            <TextBox
-                x:Name="ItemsTextBox"
-                Grid.Row="2"
-                TextChanged="OnItemsTextBoxTextChanged"
-                AcceptsReturn="True"
-                TextWrapping="Wrap"
-                ScrollViewer.VerticalScrollBarVisibility="Auto"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                FontFamily="Consolas"
-                PlaceholderText="1行1アイテムで入力してください（最大30件）" />
+            <!-- アイテム表形式編集エリア -->
+            <Grid Grid.Row="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="120" />
+                </Grid.RowDefinitions>
+
+                <StackPanel
+                    Grid.Row="0"
+                    Spacing="4"
+                    Margin="0,0,0,8">
+                    <TextBlock
+                        Text="選択アイテム操作"
+                        FontSize="12"
+                        FontWeight="SemiBold" />
+                    <StackPanel
+                        Orientation="Horizontal"
+                        Spacing="8">
+                        <Button
+                            Content="アイテム追加"
+                            Command="{x:Bind ViewModel.AddItemRowCommand}"
+                            Padding="8,4"
+                            CornerRadius="4" />
+                        <Button
+                            Content="選択削除"
+                            Command="{x:Bind ViewModel.DeleteSelectedItemRowCommand}"
+                            Padding="8,4"
+                            CornerRadius="4" />
+                    </StackPanel>
+                    <StackPanel
+                        Orientation="Horizontal"
+                        Spacing="8">
+                        <Button
+                            Content="選択を上へ"
+                            Command="{x:Bind ViewModel.MoveItemRowUpCommand}"
+                            Padding="8,4"
+                            CornerRadius="4" />
+                        <Button
+                            Content="選択を下へ"
+                            Command="{x:Bind ViewModel.MoveItemRowDownCommand}"
+                            Padding="8,4"
+                            CornerRadius="4" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel
+                    Grid.Row="1"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    Margin="0,0,0,8">
+                    <TextBlock
+                        Text="一覧全体:"
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        FontWeight="SemiBold" />
+                    <Button
+                        Content="一覧ソート"
+                        Command="{x:Bind ViewModel.SortItemsCommand}"
+                        Padding="8,4"
+                        CornerRadius="4" />
+                    <Button
+                        Content="一覧シャッフル"
+                        Command="{x:Bind ViewModel.ShuffleItemsCommand}"
+                        Padding="8,4"
+                        CornerRadius="4" />
+                    <TextBlock
+                        Text="Weight は 1～5"
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        Opacity="0.72" />
+                </StackPanel>
+
+                <Border
+                    Grid.Row="2"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid
+                            Grid.Row="0"
+                            Padding="8,6"
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="120" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="#" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="1" Text="名前" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="3" Text="Weight" FontWeight="SemiBold" />
+                        </Grid>
+
+                        <ListView
+                            x:Name="ItemsListView"
+                            Grid.Row="1"
+                            ItemsSource="{x:Bind ViewModel.EditableItems, Mode=OneWay}"
+                            SelectedItem="{x:Bind ViewModel.SelectedEditableItem, Mode=TwoWay}"
+                            SelectionMode="Single">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Padding="8,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="24" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="120" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            Text="•"
+                                            VerticalAlignment="Center" />
+                                        <TextBox
+                                            Grid.Column="1"
+                                            Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            TextChanged="OnEditableItemTextChanged"
+                                            PlaceholderText="名前" />
+                                        <NumberBox
+                                            Grid.Column="3"
+                                            Value="{Binding Weight, Mode=TwoWay}"
+                                            Minimum="1"
+                                            Maximum="5"
+                                            MinWidth="112"
+                                            SmallChange="1"
+                                            SpinButtonPlacementMode="Compact"
+                                            ValueChanged="OnEditableItemWeightChanged" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                </Border>
+
+                <TextBlock
+                    Grid.Row="3"
+                    Text="{x:Bind ViewModel.ItemEditStatusText, Mode=OneWay}"
+                    Margin="0,6,0,6"
+                    FontSize="12"
+                    Foreground="DarkOrange"
+                    TextWrapping="Wrap" />
+
+                <TextBox
+                    x:Name="ItemsTextBox"
+                    Grid.Row="4"
+                    TextChanged="OnItemsTextBoxTextChanged"
+                    AcceptsReturn="True"
+                    TextWrapping="Wrap"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    FontFamily="Consolas"
+                    PlaceholderText="テキスト貼り付けも可能です（名前,Weight / 最大30件）" />
+            </Grid>
 
         </Grid>
     </Grid>
