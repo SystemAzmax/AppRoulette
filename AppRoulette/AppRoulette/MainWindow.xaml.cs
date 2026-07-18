@@ -72,7 +72,7 @@ namespace AppRoulette
                 new RandomService(),
                 new SqliteItemRepository(),
                 new SqliteGroupRepository(),
-                new JsonDataPersistenceService());
+                new SqliteAppSettingsRepository());
 
             ViewModel.PropertyChanged += (_, e) =>
             {

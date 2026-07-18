@@ -114,6 +114,11 @@ public class DatabaseInitializer
                 Label TEXT NOT NULL,
                 Weight INTEGER NOT NULL,
                 [GroupId] INTEGER NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS AppSettings (
+                Key TEXT PRIMARY KEY,
+                Value TEXT NOT NULL
             );";
 
         _ = command.ExecuteNonQuery();

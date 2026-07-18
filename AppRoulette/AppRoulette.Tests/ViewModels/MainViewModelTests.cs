@@ -14,44 +14,30 @@ public class MainViewModelTests
     // ---------------------------------------------------------------
 
     /// <summary>
-    /// (廃止予定) FakeDataPersistenceService を生成します。
+    /// (廃止予定) FakeAppSettingsRepository を生成します。
     /// テストからは CreateSut(itemCountInGroup1: X) を使用してください。
     /// </summary>
     [Obsolete("Use CreateSut(itemCountInGroup1) instead")]
-    private static FakeDataPersistenceService CreateDefaultFakeService(
+    private static FakeAppSettingsRepository CreateDefaultFakeService(
         int itemCountInGroup1 = 0)
     {
-        var group1 = new RouletteGroup(1, "Roulette1");
-        for (var i = 0; i < itemCountInGroup1; i++)
-        {
-            group1.TryAddItem(new RouletteItem($"アイテム{i + 1}"));
-        }
-
-        return new FakeDataPersistenceService
-        {
-            GroupsToReturn = new List<RouletteGroup>
-            {
-                group1,
-                new(2, "Roulette2"),
-                new(3, "Roulette3"),
-            },
-        };
+        _ = itemCountInGroup1;
+        return new FakeAppSettingsRepository();
     }
 
     /// <summary>
-    /// SUT を生成します。（レガシ: FakeDataPersistenceService 対応）
+    /// SUT を生成します。（レガシ: FakeAppSettingsRepository 対応）
     /// 注意：このオーバーロードは廃止予定です。使用しないでください。
     /// </summary>
-    [Obsolete("FakeDataPersistenceService を使用しないでください。FakeItemRepository を使用してください。")]
+    [Obsolete("FakeAppSettingsRepository を直接使用しないでください。CreateSut を使用してください。")]
     private static MainViewModel CreateSut(
-        FakeDataPersistenceService _unused)
+        FakeAppSettingsRepository _unused)
     {
-        // JSON persistence は廃止されたため、ダミー実装
         return new(
             new FakeRandomService(0),
             new FakeItemRepository(),
             new FakeGroupRepository(),
-            new FakeDataPersistenceService());
+            new FakeAppSettingsRepository());
     }
 
     /// <summary>
@@ -62,11 +48,11 @@ public class MainViewModelTests
         int itemCountInGroup1 = 0,
         FakeItemRepository? customRepository = null,
         FakeGroupRepository? customGroupRepository = null,
-        FakeDataPersistenceService? customPersistence = null)
+        FakeAppSettingsRepository? customSettingsRepository = null)
     {
         FakeItemRepository fakeRepo = customRepository ?? new FakeItemRepository();
         FakeGroupRepository fakeGroupRepo = customGroupRepository ?? new FakeGroupRepository();
-        FakeDataPersistenceService fakePersistence = customPersistence ?? new FakeDataPersistenceService();
+        FakeAppSettingsRepository fakeSettingsRepository = customSettingsRepository ?? new FakeAppSettingsRepository();
 
         // customRepository が未指定かつ itemCountInGroup1 > 0 の場合、Roulette1にアイテムを設定
         if (customRepository is null && itemCountInGroup1 > 0)
@@ -81,7 +67,7 @@ public class MainViewModelTests
             fakeRandom ?? new FakeRandomService(0),
             fakeRepo,
             fakeGroupRepo,
-            fakePersistence);
+            fakeSettingsRepository);
     }
 
     // ---------------------------------------------------------------
@@ -894,33 +880,31 @@ public class MainViewModelTests
     public async Task SelectedGroup_グループを切り替えた場合_グループIDを保存する()
     {
         // Arrange
-        var fakePersistence = new FakeDataPersistenceService();
+        var fakeSettingsRepository = new FakeAppSettingsRepository();
         var fakeRepo = new FakeItemRepository();
-        var sut = CreateSut(customPersistence: fakePersistence, customRepository: fakeRepo);
+        var sut = CreateSut(customSettingsRepository: fakeSettingsRepository, customRepository: fakeRepo);
         await sut.InitializeCommand.ExecuteAsync(null);
 
-        // 初期化時の呼び出しをカウントした状態から、新規に2番目の呼び出しをカウントする新しいfakePersistenceを作成
-        var fakePersistence2 = new FakeDataPersistenceService();
         sut.SelectedGroup = sut.GroupList[2]; // Roulette3 を選択
 
         // Assert: SelectGroupが呼び出されると、新規作成した永続化サービスではなく既存のsutが使用するため
         // 初回InitializeAsyncで1回、SelectedGroup変更で1回、合計2回呼ばれることを確認
         await Task.Delay(100);
-        Assert.True(fakePersistence.SaveLastSelectedGroupIdCallCount > 0);
+        Assert.True(fakeSettingsRepository.SaveLastSelectedGroupIdCallCount > 0);
         // LastSavedGroupId は最後に設定された値が Roulette3 (Id=3) であること
-        Assert.Equal(3, fakePersistence.LastSavedGroupId);
+        Assert.Equal(3, fakeSettingsRepository.LastSavedGroupId);
     }
 
     [Fact]
     public async Task InitializeAsync_保存されたグループIDがある場合_該当グループを復元する()
     {
         // Arrange
-        var fakePersistence = new FakeDataPersistenceService
+        var fakeSettingsRepository = new FakeAppSettingsRepository
         {
             LastSavedGroupId = 2 // Roulette2 を保存済み
         };
         var fakeRepo = new FakeItemRepository();
-        var sut = CreateSut(customPersistence: fakePersistence, customRepository: fakeRepo);
+        var sut = CreateSut(customSettingsRepository: fakeSettingsRepository, customRepository: fakeRepo);
 
         // Act
         await sut.InitializeCommand.ExecuteAsync(null);
@@ -934,12 +918,12 @@ public class MainViewModelTests
     public async Task InitializeAsync_保存されたグループIDがない場合_最初のグループを選択する()
     {
         // Arrange
-        var fakePersistence = new FakeDataPersistenceService
+        var fakeSettingsRepository = new FakeAppSettingsRepository
         {
             LastSavedGroupId = 0 // グループID未保存
         };
         var fakeRepo = new FakeItemRepository();
-        var sut = CreateSut(customPersistence: fakePersistence, customRepository: fakeRepo);
+        var sut = CreateSut(customSettingsRepository: fakeSettingsRepository, customRepository: fakeRepo);
 
         // Act
         await sut.InitializeCommand.ExecuteAsync(null);
@@ -953,12 +937,12 @@ public class MainViewModelTests
     public async Task InitializeAsync_保存されたグループIDが範囲外の場合_最初のグループを選択する()
     {
         // Arrange
-        var fakePersistence = new FakeDataPersistenceService
+        var fakeSettingsRepository = new FakeAppSettingsRepository
         {
             LastSavedGroupId = 99 // 存在しないグループID
         };
         var fakeRepo = new FakeItemRepository();
-        var sut = CreateSut(customPersistence: fakePersistence, customRepository: fakeRepo);
+        var sut = CreateSut(customSettingsRepository: fakeSettingsRepository, customRepository: fakeRepo);
 
         // Act
         await sut.InitializeCommand.ExecuteAsync(null);

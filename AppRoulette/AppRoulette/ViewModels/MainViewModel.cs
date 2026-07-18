@@ -30,7 +30,7 @@ public class MainViewModel : ObservableObject
     private readonly IRandomService _randomService;
     private readonly IItemRepository _itemRepository;
     private readonly IGroupRepository _groupRepository;
-    private readonly IDataPersistenceService _dataPersistence;
+    private readonly IAppSettingsRepository _appSettingsRepository;
 
     private readonly Dictionary<int, CancellationTokenSource> _saveDebounceTokens =
         new();
@@ -331,17 +331,17 @@ public class MainViewModel : ObservableObject
     /// <param name="randomService">ランダム生成サービス。</param>
     /// <param name="itemRepository">SQLite Item リポジトリ。</param>
     /// <param name="groupRepository">SQLite Group リポジトリ。</param>
-    /// <param name="dataPersistence">データ永続化サービス。</param>
+    /// <param name="appSettingsRepository">アプリ設定リポジトリ。</param>
     public MainViewModel(
         IRandomService randomService,
         IItemRepository itemRepository,
         IGroupRepository groupRepository,
-        IDataPersistenceService dataPersistence)
+        IAppSettingsRepository appSettingsRepository)
     {
         _randomService = randomService;
         _itemRepository = itemRepository;
         _groupRepository = groupRepository;
-        _dataPersistence = dataPersistence;
+        _appSettingsRepository = appSettingsRepository;
         InitializeCommand = new AsyncRelayCommand(InitializeAsync);
         SpinCommand = new RelayCommand(Spin, CanSpin);
         ClearItemsCommand = new RelayCommand(ClearItems);
@@ -396,7 +396,7 @@ public class MainViewModel : ObservableObject
         GroupList = new ObservableCollection<RouletteGroup>(groups);
 
         // 前回起動時に選択されたグループを復元
-        var lastSelectedGroupId = await _dataPersistence.GetLastSelectedGroupIdAsync();
+        var lastSelectedGroupId = await _appSettingsRepository.GetLastSelectedGroupIdAsync();
         var selectedGroup = groups.FirstOrDefault(g => g.Id == lastSelectedGroupId) 
             ?? (GroupList.Count > 0 ? GroupList[0] : null);
         SelectedGroup = selectedGroup;
@@ -1185,7 +1185,7 @@ public class MainViewModel : ObservableObject
     {
         try
         {
-            await _dataPersistence.SaveLastSelectedGroupIdAsync(groupId);
+            await _appSettingsRepository.SaveLastSelectedGroupIdAsync(groupId);
         }
         catch (Exception ex)
         {

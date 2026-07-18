@@ -4,7 +4,8 @@ using AppRoulette.Models;
 namespace AppRoulette.Services;
 
 /// <summary>
-/// JSON ファイルを使用してルーレットデータを永続化するサービスです。
+/// JSON ファイルを使用して旧形式のルーレットデータを永続化するサービスです。
+/// 現行アプリ本体では SQLite リポジトリを使用します。
 /// </summary>
 public class JsonDataPersistenceService : IDataPersistenceService
 {
