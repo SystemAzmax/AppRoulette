@@ -35,6 +35,9 @@ public class MainViewModel : ObservableObject
     private readonly Dictionary<int, CancellationTokenSource> _saveDebounceTokens =
         new();
 
+    /// <summary>ルーレットアニメーション状態を管理する ViewModel。</summary>
+    private SpinAnimationViewModel _spinAnimationViewModel = new();
+
     /// <summary>直前の <see cref="ItemsText"/> の値（改行増加検出に使用）。</summary>
     private string _previousItemsText = string.Empty;
 
@@ -239,12 +242,20 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 選択中グループ名の入力欄に未保存の変更があるかどうかを取得します。
+    /// 選択中グループが未保存の変更があるかどうかを取得します。
     /// </summary>
     public bool IsGroupNameUnsaved
     {
         get => _isGroupNameUnsaved;
         private set => SetProperty(ref _isGroupNameUnsaved, value);
+    }
+
+    /// <summary>
+    /// ルーレットアニメーション状態を管理する ViewModel を取得します。
+    /// </summary>
+    public SpinAnimationViewModel SpinAnimation
+    {
+        get => _spinAnimationViewModel;
     }
 
     /// <summary>グループデータを読み込み初期状態に設定するコマンド。</summary>
@@ -1235,4 +1246,48 @@ public class MainViewModel : ObservableObject
         string.IsNullOrEmpty(text)
             ? 0
             : text.Split('\n').Length;
+
+    /// <summary>
+    /// 指定されたアイテムのインデックスが、ルーレット上でインジケーター位置に来るような
+    /// ルーレットの回転角度（ラジアン）を計算します。
+    /// </summary>
+    /// <param name="selectedIndex">アイテムのインデックス（0 始まり）。</param>
+    /// <param name="items">アイテムリスト。</param>
+    /// <returns>目標回転角度（ラジアン）。</returns>
+    public static float CalcTargetAngle(
+        int selectedIndex,
+        IReadOnlyList<RouletteItem>? items)
+    {
+        if (items is null || selectedIndex < 0 || selectedIndex >= items.Count)
+        {
+            return 0f;
+        }
+
+        var totalWeight = 0;
+        var precedingWeight = 0;
+        for (var i = 0; i < items.Count; i++)
+        {
+            var weight = Math.Max(0, items[i].Weight);
+            totalWeight += weight;
+
+            if (i < selectedIndex)
+            {
+                precedingWeight += weight;
+            }
+        }
+
+        var selectedWeight = Math.Max(0, items[selectedIndex].Weight);
+        if (totalWeight <= 0 || selectedWeight <= 0)
+        {
+            return 0f;
+        }
+
+        var selectedCenterWeight = precedingWeight + selectedWeight / 2f;
+
+        // Draw では startAngle = rotationAngle - π/2 + 累積Weight角度。
+        // インジケーターは 3時方向（角度 0）なので、選択扇形の中心が
+        // 角度 0 を向くように targetAngle を決定する。
+        return MathF.PI / 2f
+            - MathF.PI * 2f * selectedCenterWeight / totalWeight;
+    }
 }

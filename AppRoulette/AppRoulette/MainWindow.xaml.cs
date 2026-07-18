@@ -25,30 +25,9 @@ namespace AppRoulette
         /// <summary>1フレームのインターバル（ミリ秒）。約60fps。</summary>
         private const int TIMER_INTERVAL_MS = 16;
 
-        /// <summary>アニメーションの総回転量（ラジアン）の最小値。</summary>
-        private const float MIN_SPIN_RADIANS = MathF.PI * 8f;   // 4周
-
-        /// <summary>アニメーションの総回転量（ラジアン）の最大値。</summary>
-        private const float MAX_SPIN_RADIANS = MathF.PI * 14f;  // 7周
-
-        /// <summary>アニメーション総時間（秒）。</summary>
-        private const float SPIN_DURATION_SEC = 3.5f;
-
         // ---------------------------------------------------------------
         // アニメーション状態
         // ---------------------------------------------------------------
-
-        /// <summary>現在の回転角度（ラジアン）。</summary>
-        private float _rotationAngle;
-
-        /// <summary>アニメーション開始時点の回転角度（ラジアン）。</summary>
-        private float _spinStartAngle;
-
-        /// <summary>アニメーションの総回転量（ラジアン）。</summary>
-        private float _spinTotalRadians;
-
-        /// <summary>アニメーション経過時間（秒）。</summary>
-        private float _spinElapsedSec;
 
         /// <summary>フレーム更新用タイマー。</summary>
         private readonly DispatcherTimer _spinTimer;
@@ -99,48 +78,20 @@ namespace AppRoulette
             {
                 try
                 {
-                    // ルーレット再描画：アイテム数またはグループ変更時（ユーザー入力中もルーレットは更新）
+                    // ルーレット再描画：アイテム数またはグループ変更時
                     if (e.PropertyName is nameof(ViewModel.ItemCount)
                                        or nameof(ViewModel.SelectedGroup))
                     {
-                        _rotationAngle = 0f;
-                        // デザイン時は RouletteCanvas が null の可能性がある
                         RouletteCanvas?.Invalidate();
                     }
 
-                    // ItemsText 変更時もルーレットを再描画（テキストの内容は同じでも表示を更新）
+                    // ItemsText 変更時もルーレットを再描画
                     if (e.PropertyName == nameof(ViewModel.ItemsText))
                     {
                         RouletteCanvas?.Invalidate();
                     }
 
-                    // SelectedGroup 変更時に ComboBox を同期
-                    if (e.PropertyName == nameof(ViewModel.SelectedGroup))
-                    {
-                        if (GroupComboBox != null)
-                        {
-                            GroupComboBox.SelectedItem = ViewModel.SelectedGroup;
-                        }
-                    }
-
-                    // ItemsText 変更時に TextBox を同期（ユーザー入力中は無視）
-                    // ユーザー入力中は TextBox が既に最新なので更新は不要
-                    if (e.PropertyName == nameof(ViewModel.ItemsText) && !_isUserInput)
-                    {
-                        if (ItemsTextBox != null)
-                        {
-                            _isUpdatingTextBox = true;
-                            try
-                            {
-                                ItemsTextBox.Text = ViewModel.ItemsText.Replace("\n", "\r\n");
-                            }
-                            finally
-                            {
-                                _isUpdatingTextBox = false;
-                            }
-                        }
-                    }
-
+                    // グループ名未保存状態の視覚的フィードバック
                     if (e.PropertyName == nameof(ViewModel.IsGroupNameUnsaved))
                     {
                         UpdateGroupNameUnsavedVisualState();
@@ -288,7 +239,7 @@ namespace AppRoulette
                 args.DrawingSession,
                 cx, cy, radius,
                 items,
-                _rotationAngle);
+                ViewModel.SpinAnimation.RotationAngle);
         }
 
         // ---------------------------------------------------------------
@@ -339,28 +290,29 @@ namespace AppRoulette
         {
             ViewModel.IsSpinning = true;
 
-            _spinStartAngle = _rotationAngle;
-            _spinElapsedSec = 0f;
+            var spinAnimation = ViewModel.SpinAnimation;
+            spinAnimation.SpinStartAngle = spinAnimation.RotationAngle;
+            spinAnimation.SpinElapsedSec = 0f;
 
-            // 目的アングル：選択されたアイテムがインジケーター位置に来るように調整
-            var targetAngle = CalcTargetAngle(
+            // 目的角度：選択されたアイテムがインジケーター位置に来るように調整
+            var targetAngle = MainViewModel.CalcTargetAngle(
                 ViewModel.SelectedItemIndex,
                 ViewModel.SelectedGroup?.Items);
 
             // 最低 MIN_SPIN_RADIANS 以上の回転を加える
-            var rawDelta = targetAngle - _spinStartAngle;
-            while (rawDelta < MIN_SPIN_RADIANS)
+            var rawDelta = targetAngle - spinAnimation.SpinStartAngle;
+            while (rawDelta < SpinAnimationViewModel.MIN_SPIN_RADIANS)
             {
                 rawDelta += MathF.PI * 2f;
             }
 
             // 最大を MAX_SPIN_RADIANS に収める（超えた分は 2π で切り捨て）
-            while (rawDelta > MAX_SPIN_RADIANS)
+            while (rawDelta > SpinAnimationViewModel.MAX_SPIN_RADIANS)
             {
                 rawDelta -= MathF.PI * 2f;
             }
 
-            _spinTotalRadians = rawDelta;
+            spinAnimation.SpinTotalRadians = rawDelta;
             _spinTimer.Start();
         }
 
@@ -375,15 +327,12 @@ namespace AppRoulette
         /// <param name="e">引数（未使用）。</param>
         private async void OnSpinTimerTick(object? sender, object e)
         {
-            _spinElapsedSec += TIMER_INTERVAL_MS / 1000f;
+            var spinAnimation = ViewModel.SpinAnimation;
+            spinAnimation.AdvanceAnimation(TIMER_INTERVAL_MS);
 
-            var t = System.Math.Min(_spinElapsedSec / SPIN_DURATION_SEC, 1f);
-            var eased = EaseOutCubic((float)t);
-
-            _rotationAngle = _spinStartAngle + _spinTotalRadians * eased;
             RouletteCanvas.Invalidate();
 
-            if (t >= 1f)
+            if (spinAnimation.IsAnimationComplete)
             {
                 _spinTimer.Stop();
                 ViewModel.IsSpinning = false;
@@ -634,50 +583,6 @@ namespace AppRoulette
                     _isUserInput = false;
                 }
             }
-        }
-
-        /// <summary>
-        /// 選択インデックスのアイテム中心がインジケーターを向く
-        /// 目標回転角度（ラジアン）を返します。
-        /// </summary>
-        /// <param name="selectedIndex">選択されたアイテムのインデックス。</param>
-        /// <param name="items">重み付きルーレットのアイテム一覧。</param>
-        /// <returns>目標角度（ラジアン）。</returns>
-        private static float CalcTargetAngle(
-            int selectedIndex,
-            IReadOnlyList<RouletteItem>? items)
-        {
-            if (items is null || selectedIndex < 0 || selectedIndex >= items.Count)
-            {
-                return 0f;
-            }
-
-            var totalWeight = 0;
-            var precedingWeight = 0;
-            for (var i = 0; i < items.Count; i++)
-            {
-                var weight = Math.Max(0, items[i].Weight);
-                totalWeight += weight;
-
-                if (i < selectedIndex)
-                {
-                    precedingWeight += weight;
-                }
-            }
-
-            var selectedWeight = Math.Max(0, items[selectedIndex].Weight);
-            if (totalWeight <= 0 || selectedWeight <= 0)
-            {
-                return 0f;
-            }
-
-            var selectedCenterWeight = precedingWeight + selectedWeight / 2f;
-
-            // Draw では startAngle = rotationAngle - π/2 + 累積Weight角度。
-            // インジケーターは 3時方向（角度 0）なので、選択扇形の中心が
-            // 角度 0 を向くように targetAngle を決定する。
-            return MathF.PI / 2f
-                - MathF.PI * 2f * selectedCenterWeight / totalWeight;
         }
     }
 }
