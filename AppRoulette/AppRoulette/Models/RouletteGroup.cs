@@ -1,16 +1,20 @@
 namespace AppRoulette.Models;
 
+using CommunityToolkit.Mvvm.ComponentModel;
+
 /// <summary>
 /// ルーレットのグループを表すモデルクラス。
 /// アイテムを最大 <see cref="MAX_ITEM_COUNT"/> 件まで保持します。
 /// </summary>
-public class RouletteGroup
+public class RouletteGroup : ObservableObject
 {
     /// <summary>グループあたりのアイテム最大件数。</summary>
     public const int MAX_ITEM_COUNT = 30;
 
     /// <summary>グループ数（固定）。</summary>
     public const int GROUP_COUNT = 9;
+
+    private string _displayName = string.Empty;
 
     /// <summary>
     /// グループの識別子（1 始まり）を取得または設定します。
@@ -20,7 +24,11 @@ public class RouletteGroup
     /// <summary>
     /// グループの表示名を取得または設定します。
     /// </summary>
-    public string DisplayName { get; set; } = string.Empty;
+    public string DisplayName
+    {
+        get => _displayName;
+        set => SetProperty(ref _displayName, value);
+    }
 
     /// <summary>
     /// グループに属するルーレットアイテムの一覧を取得または設定します。

@@ -50,6 +50,7 @@ public class MainViewModelTests
         return new(
             new FakeRandomService(0),
             new FakeItemRepository(),
+            new FakeGroupRepository(),
             new FakeDataPersistenceService());
     }
 
@@ -60,9 +61,11 @@ public class MainViewModelTests
         FakeRandomService? fakeRandom = null,
         int itemCountInGroup1 = 0,
         FakeItemRepository? customRepository = null,
+        FakeGroupRepository? customGroupRepository = null,
         FakeDataPersistenceService? customPersistence = null)
     {
         FakeItemRepository fakeRepo = customRepository ?? new FakeItemRepository();
+        FakeGroupRepository fakeGroupRepo = customGroupRepository ?? new FakeGroupRepository();
         FakeDataPersistenceService fakePersistence = customPersistence ?? new FakeDataPersistenceService();
 
         // customRepository が未指定かつ itemCountInGroup1 > 0 の場合、Roulette1にアイテムを設定
@@ -77,6 +80,7 @@ public class MainViewModelTests
         return new(
             fakeRandom ?? new FakeRandomService(0),
             fakeRepo,
+            fakeGroupRepo,
             fakePersistence);
     }
 
@@ -109,6 +113,22 @@ public class MainViewModelTests
         // Assert
         Assert.NotNull(sut.SelectedGroup);
         Assert.Equal(1, sut.SelectedGroup.Id);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_保存済みグループ名がある場合_表示名に反映される()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        await fakeGroupRepo.SaveGroupNameAsync(1, "仕事用");
+        var sut = CreateSut(customGroupRepository: fakeGroupRepo);
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("仕事用", sut.GroupList[0].DisplayName);
+        Assert.Equal("仕事用", sut.GroupNameText);
     }
 
     [Fact]
@@ -175,6 +195,214 @@ public class MainViewModelTests
         Assert.Equal(0, sut.ItemCount);
     }
 
+    [Fact]
+    public async Task RenameGroupCommand_実行した場合_選択中グループ名を保存する()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var sut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.GroupNameText = "抽選用";
+        await sut.RenameGroupCommand.ExecuteAsync(null);
+
+        var restartedSut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("抽選用", sut.SelectedGroup?.DisplayName);
+        Assert.Equal("抽選用", restartedSut.GroupList[0].DisplayName);
+        Assert.Equal("保存済み", sut.SaveStatusText);
+    }
+
+    [Fact]
+    public async Task GroupNameText_保存済み名と異なる場合_未保存状態になる()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.GroupNameText = "抽選用";
+
+        // Assert
+        Assert.True(sut.IsGroupNameUnsaved);
+    }
+
+    [Fact]
+    public async Task RenameGroupCommand_実行した場合_未保存状態が解除される()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.GroupNameText = "抽選用";
+
+        // Act
+        await sut.RenameGroupCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.False(sut.IsGroupNameUnsaved);
+    }
+
+    [Fact]
+    public async Task ResetGroupNameCommand_実行した場合_入力欄のみ既定名にする()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var sut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.GroupNameText = "作業用";
+        await sut.RenameGroupCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.ResetGroupNameCommand.ExecuteAsync(null);
+
+        var restartedSut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("作業用", sut.SelectedGroup?.DisplayName);
+        Assert.Equal("New Roulette", sut.GroupNameText);
+        Assert.Equal("作業用", restartedSut.GroupList[0].DisplayName);
+    }
+
+    [Fact]
+    public async Task AddGroupCommand_実行した場合_グループを追加して保存する()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var sut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.AddGroupCommand.ExecuteAsync(null);
+
+        var restartedSut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(10, sut.GroupList.Count);
+        Assert.Equal("New Roulette", sut.SelectedGroup?.DisplayName);
+        Assert.Equal(10, restartedSut.GroupList.Count);
+        Assert.Equal("New Roulette", restartedSut.GroupList[9].DisplayName);
+    }
+
+    [Fact]
+    public async Task AddGroupCommand_Roulette9が存在する場合_NewRouletteを追加する()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var sut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        await sut.DeleteGroupCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.AddGroupCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Contains(sut.GroupList, g => g.DisplayName == "Roulette9");
+        Assert.Equal("New Roulette", sut.SelectedGroup?.DisplayName);
+    }
+
+    [Fact]
+    public async Task DuplicateGroupCommand_実行した場合_名前とアイテムを複製して選択する()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var fakeItemRepo = new FakeItemRepository();
+        fakeItemRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", weight: 3, groupId: 1),
+            new("アイテムB", weight: 5, groupId: 1),
+        });
+        var sut = CreateSut(
+            customRepository: fakeItemRepo,
+            customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.DuplicateGroupCommand.ExecuteAsync(null);
+
+        var duplicatedGroup = sut.SelectedGroup;
+        var duplicatedItems = await fakeItemRepo.GetItemsByGroupAsync(duplicatedGroup!.Id);
+        var restartedSut = CreateSut(
+            customRepository: fakeItemRepo,
+            customGroupRepository: fakeGroupRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(10, sut.GroupList.Count);
+        Assert.Equal("Roulette1 Copy", duplicatedGroup.DisplayName);
+        Assert.Equal("Roulette1 Copy", sut.GroupNameText);
+        Assert.Equal(2, sut.ItemCount);
+        Assert.Equal("アイテムA,3\nアイテムB,5", sut.ItemsText);
+        Assert.Collection(
+            duplicatedItems,
+            item =>
+            {
+                Assert.Equal("アイテムA", item.Label);
+                Assert.Equal(3, item.Weight);
+            },
+            item =>
+            {
+                Assert.Equal("アイテムB", item.Label);
+                Assert.Equal(5, item.Weight);
+            });
+        Assert.Equal(10, restartedSut.GroupList.Count);
+        Assert.Equal("Roulette1 Copy", restartedSut.GroupList[9].DisplayName);
+    }
+
+    [Fact]
+    public async Task DeleteGroupCommand_実行した場合_グループとアイテムを削除する()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var fakeItemRepo = new FakeItemRepository();
+        fakeItemRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", groupId: 1),
+        });
+        var sut = CreateSut(
+            customRepository: fakeItemRepo,
+            customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.DeleteGroupCommand.ExecuteAsync(null);
+
+        var items = await fakeItemRepo.GetItemsByGroupAsync(1);
+        var restartedSut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(8, sut.GroupList.Count);
+        Assert.Empty(items);
+        Assert.Equal(8, restartedSut.GroupList.Count);
+        Assert.DoesNotContain(restartedSut.GroupList, g => g.Id == 1);
+    }
+
+    [Fact]
+    public async Task MoveGroupDownCommand_実行した場合_並び順を保存する()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var sut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.MoveGroupDownCommand.ExecuteAsync(null);
+
+        var restartedSut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(2, sut.GroupList[0].Id);
+        Assert.Equal(1, sut.GroupList[1].Id);
+        Assert.Equal(2, restartedSut.GroupList[0].Id);
+        Assert.Equal(1, restartedSut.GroupList[1].Id);
+    }
+
     // ---------------------------------------------------------------
     // ItemsText 変更（アイテム数・保存）
     // ---------------------------------------------------------------
@@ -220,32 +448,104 @@ public class MainViewModelTests
         sut.ItemsText = "アイテム1";
         sut.ItemsText = "アイテム1\nアイテム2";
 
+        Assert.Equal("保存中", sut.SaveStatusText);
+
         // 非同期保存の完了を待つ
         await Task.Delay(100);
 
         // Assert - SQLite にアイテムが増えていることを確認
         var itemsAfter = await fakeRepo.GetItemsAsync();
         Assert.True(itemsAfter.Count > itemsCountBefore, "SQLite にアイテムが保存されていません");
+        Assert.Equal("保存済み", sut.SaveStatusText);
     }
 
     [Fact]
-    public async Task ItemsText_改行が増えない場合_保存が呼ばれない()
+    public async Task ItemsText_改行が増えない場合_保存が呼ばれる()
     {
         // Arrange
-        var sut = CreateSut();
+        var fakeRepo = new FakeItemRepository();
+        var sut = CreateSut(customRepository: fakeRepo);
         await sut.InitializeCommand.ExecuteAsync(null);
 
-        // Act（行数を増やす：1行⇒2行）
+        // Act
         sut.ItemsText = "アイテム1";
-        await Task.Delay(50);
+        await Task.Delay(100);
         sut.ItemsText = "アイテムA"; // 行数変化なし
 
         await Task.Delay(100);
 
-        // Assert（行数が変わらない場合、SQLite 同期は呼ばれない仕様）
-        // ただし Items は実メモリ上で更新される
+        // Assert
+        var items = await fakeRepo.GetItemsByGroupAsync(1);
         Assert.Single(sut.GroupList[0].Items);
         Assert.Equal("アイテムA", sut.GroupList[0].Items[0].Name);
+        Assert.Single(items);
+        Assert.Equal("アイテムA", items[0].Label);
+        Assert.Equal("保存済み", sut.SaveStatusText);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_SQLiteのWeight_ItemsTextとItemsに復元される()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        fakeRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", weight: 5, groupId: 1),
+            new("アイテムB", weight: 2, groupId: 1),
+        });
+        var sut = CreateSut(customRepository: fakeRepo);
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("アイテムA,5\nアイテムB,2", sut.ItemsText);
+        Assert.Equal(5, sut.SelectedGroup?.Items[0].Weight);
+        Assert.Equal(2, sut.SelectedGroup?.Items[1].Weight);
+    }
+
+    [Fact]
+    public async Task ItemsText_同一ラベルのWeight変更_SQLiteに更新される()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        fakeRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", weight: 1, groupId: 1),
+        });
+        var sut = CreateSut(customRepository: fakeRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.ItemsText = "アイテムA,4";
+        await Task.Delay(100);
+
+        // Assert
+        var items = await fakeRepo.GetItemsByGroupAsync(1);
+        Assert.Single(items);
+        Assert.Equal("アイテムA", items[0].Label);
+        Assert.Equal(4, items[0].Weight);
+    }
+
+    [Fact]
+    public async Task ItemsText_名前Weight形式を保存した場合_再初期化で復元される()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        var sut = CreateSut(customRepository: fakeRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.ItemsText = "アイテムA,5\nアイテムB,2";
+        await Task.Delay(100);
+
+        var restartedSut = CreateSut(customRepository: fakeRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("アイテムA,5\nアイテムB,2", restartedSut.ItemsText);
+        Assert.Equal(5, restartedSut.SelectedGroup?.Items[0].Weight);
+        Assert.Equal(2, restartedSut.SelectedGroup?.Items[1].Weight);
     }
 
     // ---------------------------------------------------------------

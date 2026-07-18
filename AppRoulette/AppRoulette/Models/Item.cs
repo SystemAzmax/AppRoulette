@@ -20,7 +20,6 @@ public class Item
     /// <summary>
     /// アイテムの重み付け値。
     /// ルーレット選択時の確率に影響します。
-    /// 現在は常に 1 に固定されています。
     /// </summary>
     public int Weight { get; set; } = 1;
 
@@ -36,14 +35,24 @@ public class Item
 
     /// <summary>
     /// 指定されたラベル、グループでアイテムを初期化します。
-    /// Weight は常に 1 に固定されます。
     /// </summary>
     /// <param name="label">アイテムの表示ラベル。</param>
     /// <param name="groupId">アイテムが属するグループのID。</param>
     public Item(string label, int groupId)
+        : this(label, weight: 1, groupId)
+    {
+    }
+
+    /// <summary>
+    /// 指定されたラベル、重み付け値、グループでアイテムを初期化します。
+    /// </summary>
+    /// <param name="label">アイテムの表示ラベル。</param>
+    /// <param name="weight">アイテムの重み付け値。</param>
+    /// <param name="groupId">アイテムが属するグループのID。</param>
+    public Item(string label, int weight, int groupId)
     {
         Label = label;
-        Weight = 1;
+        Weight = weight;
         GroupId = groupId;
     }
 

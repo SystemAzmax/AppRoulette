@@ -42,9 +42,9 @@ namespace AppRoulette
             {
                 GenerateApplicationIcon();
             }
-            catch
+            catch (Exception ex)
             {
-                // アイコン生成に失敗しても続行
+                ApplicationLogger.LogError("アプリケーションアイコン生成", ex);
             }
         }
 
@@ -92,8 +92,7 @@ namespace AppRoulette
             }
             catch (Exception ex)
             {
-                // エラーをサイレントで処理
-                _ = ex;
+                ApplicationLogger.LogError("データベース初期化", ex);
             }
 
             // ウィンドウアイコンを設定
@@ -115,9 +114,9 @@ namespace AppRoulette
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // アイコン設定に失敗しても続行
+                ApplicationLogger.LogError("ウィンドウアイコン設定", ex);
             }
 
             _window.Activate();

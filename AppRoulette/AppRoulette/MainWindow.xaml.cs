@@ -1,3 +1,4 @@
+using AppRoulette.Models;
 using AppRoulette.Services;
 using AppRoulette.ViewModels;
 using AppRoulette.Views;
@@ -91,6 +92,7 @@ namespace AppRoulette
             ViewModel = new MainViewModel(
                 new RandomService(),
                 new SqliteItemRepository(),
+                new SqliteGroupRepository(),
                 new JsonDataPersistenceService());
 
             ViewModel.PropertyChanged += (_, e) =>
@@ -138,11 +140,15 @@ namespace AppRoulette
                             }
                         }
                     }
+
+                    if (e.PropertyName == nameof(ViewModel.IsGroupNameUnsaved))
+                    {
+                        UpdateGroupNameUnsavedVisualState();
+                    }
                 }
                 catch (Exception ex)
                 {
-                    // デザイン時や初期化時のエラーはサイレント処理
-                    System.Diagnostics.Debug.WriteLine($"PropertyChanged ハンドラ: {ex.Message}");
+                    ApplicationLogger.LogError("PropertyChanged ハンドラ", ex);
                 }
             };
 
@@ -157,6 +163,7 @@ namespace AppRoulette
                 // ウィンドウサイズを1200×800に設定
                 ExtendsContentIntoTitleBar = false;
                 AppWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
+                UpdateGroupNameUnsavedVisualState();
 
                 // ウィンドウ位置情報を読み込んで、保存されているなら適用
                 _positionService = new WindowPositionService();
@@ -189,18 +196,37 @@ namespace AppRoulette
                         };
                         await _positionService.SaveWindowPositionAsync(currentPosition);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // 位置保存エラーは無視
+                        ApplicationLogger.LogError("ウィンドウ位置保存", ex);
                     }
                 };
             }
             catch (Exception ex)
             {
-                // ウィンドウサイズ設定やイベントハンドラ登録エラーはサイレント処理
-                // これはデザイン時に発生する可能性があります
-                System.Diagnostics.Debug.WriteLine($"ウィンドウ初期化エラー: {ex.Message}");
+                ApplicationLogger.LogError("ウィンドウ初期化", ex);
             }
+        }
+
+        /// <summary>
+        /// グループ名入力欄の未保存状態を表示に反映します。
+        /// </summary>
+        private void UpdateGroupNameUnsavedVisualState()
+        {
+            if (GroupNameUnsavedBorder is null || GroupNameUnsavedText is null)
+            {
+                return;
+            }
+
+            if (ViewModel.IsGroupNameUnsaved)
+            {
+                GroupNameUnsavedBorder.BorderBrush = new SolidColorBrush(Colors.DarkOrange);
+                GroupNameUnsavedText.Opacity = 1;
+                return;
+            }
+
+            GroupNameUnsavedBorder.BorderBrush = new SolidColorBrush(Colors.Transparent);
+            GroupNameUnsavedText.Opacity = 0;
         }
 
         // ---------------------------------------------------------------
@@ -316,10 +342,10 @@ namespace AppRoulette
             _spinStartAngle = _rotationAngle;
             _spinElapsedSec = 0f;
 
-            // 目的アングル：選択されたアイテムが 12時（上・-π/2）に来るように調整
+            // 目的アングル：選択されたアイテムがインジケーター位置に来るように調整
             var targetAngle = CalcTargetAngle(
                 ViewModel.SelectedItemIndex,
-                ViewModel.SelectedGroup?.Items.Count ?? 1);
+                ViewModel.SelectedGroup?.Items);
 
             // 最低 MIN_SPIN_RADIANS 以上の回転を加える
             var rawDelta = targetAngle - _spinStartAngle;
@@ -572,28 +598,47 @@ namespace AppRoulette
         }
 
         /// <summary>
-        /// 選択インデックスのアイテムが 12時位置（インジケーター）を向く
+        /// 選択インデックスのアイテム中心がインジケーターを向く
         /// 目標回転角度（ラジアン）を返します。
         /// </summary>
         /// <param name="selectedIndex">選択されたアイテムのインデックス。</param>
-        /// <param name="totalItems">全アイテム数。</param>
+        /// <param name="items">重み付きルーレットのアイテム一覧。</param>
         /// <returns>目標角度（ラジアン）。</returns>
-        private static float CalcTargetAngle(int selectedIndex, int totalItems)
+        private static float CalcTargetAngle(
+            int selectedIndex,
+            IReadOnlyList<RouletteItem>? items)
         {
-            if (totalItems <= 0)
+            if (items is null || selectedIndex < 0 || selectedIndex >= items.Count)
             {
                 return 0f;
             }
 
-            var sweepAngle = MathF.PI * 2f / totalItems;
+            var totalWeight = 0;
+            var precedingWeight = 0;
+            for (var i = 0; i < items.Count; i++)
+            {
+                var weight = Math.Max(0, items[i].Weight);
+                totalWeight += weight;
 
-            // インジケーターは 3時方向（右端中央）→ π/2 を加算して補正
-            // 扇形の中心が 3時方向を向くように targetAngle を決定
-            // Draw では startAngle = rotationAngle + sweepAngle*i - π/2 で描くため
-            // インジケーターが 3時（角度 0）を指すように計算する:
-            //   rotationAngle + sweepAngle*selectedIndex + sweepAngle/2 - π/2 = 0
-            //   => rotationAngle = π/2 - sweepAngle*(selectedIndex + 0.5)
-            return MathF.PI / 2f - sweepAngle * (selectedIndex + 0.5f);
+                if (i < selectedIndex)
+                {
+                    precedingWeight += weight;
+                }
+            }
+
+            var selectedWeight = Math.Max(0, items[selectedIndex].Weight);
+            if (totalWeight <= 0 || selectedWeight <= 0)
+            {
+                return 0f;
+            }
+
+            var selectedCenterWeight = precedingWeight + selectedWeight / 2f;
+
+            // Draw では startAngle = rotationAngle - π/2 + 累積Weight角度。
+            // インジケーターは 3時方向（角度 0）なので、選択扇形の中心が
+            // 角度 0 を向くように targetAngle を決定する。
+            return MathF.PI / 2f
+                - MathF.PI * 2f * selectedCenterWeight / totalWeight;
         }
     }
 }

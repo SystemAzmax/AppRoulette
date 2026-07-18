@@ -58,6 +58,26 @@ internal class FakeItemRepository : IItemRepository
     }
 
     /// <summary>
+    /// 指定されたグループのアイテムを現在の一覧で置き換えます。
+    /// </summary>
+    public Task<int> SaveItemsByGroupAsync(
+        int groupId,
+        IReadOnlyList<RouletteItem> items)
+    {
+        _items.RemoveAll(i => i.GroupId == groupId);
+
+        foreach (var item in items)
+        {
+            _items.Add(new Item(item.Name, item.Weight, groupId)
+            {
+                Id = _nextId++,
+            });
+        }
+
+        return Task.FromResult(items.Count);
+    }
+
+    /// <summary>
     /// テスト用に初期データを設定します。
     /// </summary>
     public void InitializeWithItems(IEnumerable<Item> items)

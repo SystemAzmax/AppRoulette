@@ -102,6 +102,13 @@ public class DatabaseInitializer
 
         using var command = connection.CreateCommand();
         command.CommandText = @"
+            CREATE TABLE IF NOT EXISTS Groups (
+                Id INTEGER PRIMARY KEY,
+                DisplayName TEXT NOT NULL,
+                SortOrder INTEGER NOT NULL DEFAULT 0,
+                IsDeleted INTEGER NOT NULL DEFAULT 0
+            );
+
             CREATE TABLE IF NOT EXISTS Items (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Label TEXT NOT NULL,
@@ -111,6 +118,47 @@ public class DatabaseInitializer
 
         _ = command.ExecuteNonQuery();
 
+        EnsureGroupsColumn(connection, "SortOrder", "INTEGER NOT NULL DEFAULT 0");
+        EnsureGroupsColumn(connection, "IsDeleted", "INTEGER NOT NULL DEFAULT 0");
+        using var updateCommand = connection.CreateCommand();
+        updateCommand.CommandText = @"
+            UPDATE Groups
+            SET SortOrder = Id
+            WHERE SortOrder = 0;";
+        _ = updateCommand.ExecuteNonQuery();
+
         connection.Close();
+    }
+
+    /// <summary>
+    /// Groups テーブルに指定された列が存在しない場合に追加します。
+    /// </summary>
+    /// <param name="connection">SQLite 接続。</param>
+    /// <param name="columnName">追加する列名。</param>
+    /// <param name="definition">列定義。</param>
+    private static void EnsureGroupsColumn(
+        SqliteConnection connection,
+        string columnName,
+        string definition)
+    {
+        using var checkCommand = connection.CreateCommand();
+        checkCommand.CommandText = "PRAGMA table_info(Groups);";
+
+        using var reader = checkCommand.ExecuteReader();
+        while (reader.Read())
+        {
+            if (string.Equals(
+                reader.GetString(1),
+                columnName,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+        }
+
+        using var alterCommand = connection.CreateCommand();
+        alterCommand.CommandText =
+            $"ALTER TABLE Groups ADD COLUMN {columnName} {definition};";
+        _ = alterCommand.ExecuteNonQuery();
     }
 }

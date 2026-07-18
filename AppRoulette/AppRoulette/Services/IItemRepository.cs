@@ -43,6 +43,16 @@ public interface IItemRepository
     Task<int> UpdateItemAsync(Item item);
 
     /// <summary>
+    /// 指定されたグループのアイテムを現在の一覧で置き換えます。
+    /// </summary>
+    /// <param name="groupId">保存対象グループの識別子。</param>
+    /// <param name="items">保存するアイテム一覧。</param>
+    /// <returns>保存されたアイテム数。</returns>
+    Task<int> SaveItemsByGroupAsync(
+        int groupId,
+        IReadOnlyList<RouletteItem> items);
+
+    /// <summary>
     /// 指定された識別子を持つアイテムを非同期で削除します。
     /// </summary>
     /// <param name="id">削除するアイテムの識別子。</param>
