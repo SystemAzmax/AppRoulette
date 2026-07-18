@@ -74,7 +74,13 @@ public class MainViewModel : ObservableObject
     public ObservableCollection<RouletteGroup> GroupList
     {
         get => _groupList;
-        private set => SetProperty(ref _groupList, value);
+        private set
+        {
+            if (SetProperty(ref _groupList, value))
+            {
+                OnPropertyChanged(nameof(SelectedGroupPositionText));
+            }
+        }
     }
 
     /// <summary>
@@ -103,8 +109,26 @@ public class MainViewModel : ObservableObject
                 DeleteGroupCommand.NotifyCanExecuteChanged();
                 MoveGroupUpCommand.NotifyCanExecuteChanged();
                 MoveGroupDownCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(SelectedGroupPositionText));
                 OnSelectedGroupChanged(value);
             }
+        }
+    }
+
+    /// <summary>
+    /// 選択中グループがグループ一覧内の何番目かを取得します。
+    /// </summary>
+    public string SelectedGroupPositionText
+    {
+        get
+        {
+            if (SelectedGroup is null)
+            {
+                return string.Empty;
+            }
+
+            var index = GroupList.IndexOf(SelectedGroup);
+            return index >= 0 ? $"{index + 1}/{GroupList.Count}" : string.Empty;
         }
     }
 
@@ -610,6 +634,7 @@ public class MainViewModel : ObservableObject
             GroupList.Move(oldIndex, newIndex);
             await _groupRepository.SaveGroupOrderAsync(GroupList);
             OnPropertyChanged(nameof(SelectedGroup));
+            OnPropertyChanged(nameof(SelectedGroupPositionText));
             SaveStatusText = SAVE_STATUS_SAVED;
             UpdateGroupCommandStates();
         }

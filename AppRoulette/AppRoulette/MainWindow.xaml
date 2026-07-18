@@ -70,6 +70,18 @@
                         SelectionChanged="GroupComboBox_SelectionChanged"
                         MinWidth="160" />
 
+                    <StackPanel
+                        Orientation="Horizontal"
+                        Spacing="2"
+                        VerticalAlignment="Center">
+                        <TextBlock
+                            Text="リスト"
+                            VerticalAlignment="Center" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.SelectedGroupPositionText, Mode=OneWay}"
+                            VerticalAlignment="Center" />
+                    </StackPanel>
+
                     <!-- アイテム数：「n 件」 -->
                     <StackPanel Orientation="Horizontal" Spacing="8"
                                 VerticalAlignment="Center">
