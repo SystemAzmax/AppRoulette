@@ -43,7 +43,7 @@ internal static class RouletteRenderer
     /// <summary>テキストの最大文字数計算に使う1文字あたりの推定幅（px）。</summary>
     private const float TEXT_CHAR_WIDTH_ESTIMATE = 7f;
 
-    /// <summary>扇形に使用するカラーパレット（12色サイクル）。</summary>
+    /// <summary>扇形に使用するカラーパレット（最大30件分）。</summary>
     private static readonly Windows.UI.Color[] SECTOR_COLORS =
     {
         Windows.UI.Color.FromArgb(255, 255,  99,  71),  // tomato
@@ -58,6 +58,24 @@ internal static class RouletteRenderer
         Windows.UI.Color.FromArgb(255,   0, 180,   0),  // green
         Windows.UI.Color.FromArgb(255,  30, 144, 255),  // dodgerblue
         Windows.UI.Color.FromArgb(255, 220,  20,  60),  // crimson
+        Windows.UI.Color.FromArgb(255, 123, 104, 238),  // mediumslateblue
+        Windows.UI.Color.FromArgb(255,  50, 205,  50),  // limegreen
+        Windows.UI.Color.FromArgb(255, 255, 105, 180),  // hotpink
+        Windows.UI.Color.FromArgb(255,  70, 130, 180),  // steelblue
+        Windows.UI.Color.FromArgb(255, 240, 128, 128),  // lightcoral
+        Windows.UI.Color.FromArgb(255, 154, 205,  50),  // yellowgreen
+        Windows.UI.Color.FromArgb(255, 218, 112, 214),  // orchid
+        Windows.UI.Color.FromArgb(255,  32, 178, 170),  // lightseagreen
+        Windows.UI.Color.FromArgb(255, 255, 160, 122),  // lightsalmon
+        Windows.UI.Color.FromArgb(255, 100, 149, 237),  // cornflowerblue
+        Windows.UI.Color.FromArgb(255, 189, 183, 107),  // darkkhaki
+        Windows.UI.Color.FromArgb(255, 199,  21, 133),  // mediumvioletred
+        Windows.UI.Color.FromArgb(255,  60, 179, 113),  // mediumseagreen
+        Windows.UI.Color.FromArgb(255, 255, 127,  80),  // coral
+        Windows.UI.Color.FromArgb(255,  72, 209, 204),  // mediumturquoise
+        Windows.UI.Color.FromArgb(255, 186,  85, 211),  // mediumorchid
+        Windows.UI.Color.FromArgb(255, 107, 142,  35),  // olivedrab
+        Windows.UI.Color.FromArgb(255, 255,  69,   0),  // orangered
     };
 
     private static readonly Windows.UI.Color BORDER_COLOR =

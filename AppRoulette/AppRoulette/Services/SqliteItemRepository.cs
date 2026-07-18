@@ -165,6 +165,54 @@ public class SqliteItemRepository : IItemRepository
     }
 
     /// <summary>
+    /// 指定されたグループのアイテムをトランザクション内で置き換えます。
+    /// </summary>
+    /// <param name="groupId">保存対象グループの識別子。</param>
+    /// <param name="items">保存するアイテム一覧。</param>
+    /// <returns>保存されたアイテム数。</returns>
+    public async Task<int> SaveItemsByGroupAsync(
+        int groupId,
+        IReadOnlyList<RouletteItem> items)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            await using (var deleteCommand = connection.CreateCommand())
+            {
+                deleteCommand.Transaction = transaction;
+                deleteCommand.CommandText =
+                    "DELETE FROM Items WHERE [GroupId] = @groupId";
+                deleteCommand.Parameters.AddWithValue("@groupId", groupId);
+                await deleteCommand.ExecuteNonQueryAsync();
+            }
+
+            foreach (var item in items)
+            {
+                await using var insertCommand = connection.CreateCommand();
+                insertCommand.Transaction = transaction;
+                insertCommand.CommandText = @"
+                    INSERT INTO Items (Label, Weight, [GroupId])
+                    VALUES (@label, @weight, @groupId);";
+                insertCommand.Parameters.AddWithValue("@label", item.Name);
+                insertCommand.Parameters.AddWithValue("@weight", item.Weight);
+                insertCommand.Parameters.AddWithValue("@groupId", groupId);
+                await insertCommand.ExecuteNonQueryAsync();
+            }
+
+            await transaction.CommitAsync();
+            return items.Count;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    /// <summary>
     /// 指定された識別子を持つアイテムを非同期で削除します。
     /// </summary>
     /// <param name="id">削除するアイテムの識別子。</param>

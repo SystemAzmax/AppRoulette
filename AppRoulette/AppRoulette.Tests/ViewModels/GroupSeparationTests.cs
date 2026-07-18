@@ -21,6 +21,7 @@ public class GroupSeparationTests
         var sut = new MainViewModel(
             new FakeRandomService(0),
             fakeRepo,
+            new FakeGroupRepository(),
             fakePersistence);
         await sut.InitializeCommand.ExecuteAsync(null);
 
