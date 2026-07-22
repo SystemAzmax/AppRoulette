@@ -1237,6 +1237,42 @@ public class MainViewModel : ObservableObject
     public static string FormatItems(IEnumerable<RouletteItem> items) =>
         string.Join('\n', items.Select(i => $"{i.Name},{i.Weight}"));
 
+    /// <summary>CSVエクスポート時に付与するヘッダー行。</summary>
+    private const string CSV_HEADER = "アイテム名,Weight";
+
+    /// <summary>
+    /// 選択中グループのアイテム一覧をCSV形式のテキストに変換します。
+    /// 先頭行にはヘッダー（<see cref="CSV_HEADER"/>）を付与します。
+    /// </summary>
+    /// <returns>CSV形式のテキスト。選択中グループがない場合はヘッダーのみを返します。</returns>
+    public string ExportItemsToCsv()
+    {
+        var items = SelectedGroup?.Items ?? new List<RouletteItem>();
+        return CSV_HEADER + "\n" + FormatItems(items);
+    }
+
+    /// <summary>
+    /// CSV形式のテキストを解析し、選択中グループのアイテム一覧に反映します。
+    /// 先頭行が <see cref="CSV_HEADER"/> と一致する場合はヘッダー行として除外します。
+    /// </summary>
+    /// <param name="csvContent">インポートするCSV形式のテキスト。</param>
+    public void ImportItemsFromCsv(string csvContent)
+    {
+        if (SelectedGroup is null || csvContent is null)
+        {
+            return;
+        }
+
+        var normalized = csvContent.Replace("\r\n", "\n").Replace("\r", "\n");
+        var lines = normalized.Split('\n');
+        var startIndex = lines.Length > 0
+            && string.Equals(lines[0].Trim(), CSV_HEADER, StringComparison.OrdinalIgnoreCase)
+            ? 1
+            : 0;
+
+        ItemsText = string.Join('\n', lines.Skip(startIndex));
+    }
+
     /// <summary>
     /// テキストの行数を返します。空文字は 0 を返します。
     /// </summary>

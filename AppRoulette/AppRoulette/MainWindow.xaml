@@ -15,13 +15,15 @@
     </Window.SystemBackdrop>
 
         <!--
-        ルート Grid: 左列（ルーレット）/ 区切り / 右列（入力パネル）
+        ルート Grid: 左列（ルーレット）/ 中央列（リスト項目タブ）/ 右列（操作パネル）
     -->
     <Grid Margin="16" Loaded="OnRootGridLoaded">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="16" />
-            <ColumnDefinition Width="420" />
+            <ColumnDefinition Width="380" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="300" />
         </Grid.ColumnDefinitions>
 
         <!-- ===== 左列：ルーレット描画エリア ===== -->
@@ -37,28 +39,163 @@
 
         </Grid>
 
-        <!-- ===== 右列：入力パネル ===== -->
-        <Grid Grid.Column="2">
+        <!-- ===== 中央列：リスト項目タブ（詳細 / テキスト） ===== -->
+        <Grid
+            Grid.Column="2"
+            Margin="4,4,4,0"
+            VerticalAlignment="Stretch">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="8" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- グループ ComboBox + アイテム数表示 + 保存状態 -->
-            <Grid
+            <!--
+                TabView 標準のタブ下線は実際のタブ幅分しか描画されず、
+                右側の空きエリアで線が途切れて見えるため、
+                タブ行全体に明示的な Border（下線）を敷いて解消する。
+            -->
+            <Border
                 Grid.Row="0"
-                VerticalAlignment="Center">
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1">
+                <StackPanel Orientation="Horizontal" Spacing="0">
+                    <Button
+                        x:Name="DetailTabButton"
+                        Content="詳細"
+                        Click="OnDetailTabButtonClick"
+                        Padding="16,8"
+                        CornerRadius="0"
+                        Background="Transparent"
+                        BorderThickness="0" />
+                    <Button
+                        x:Name="TextTabButton"
+                        Content="テキスト"
+                        Click="OnTextTabButtonClick"
+                        Padding="16,8"
+                        CornerRadius="0"
+                        Background="Transparent"
+                        BorderThickness="0" />
+                </StackPanel>
+            </Border>
+
+            <!-- 詳細タブの内容 -->
+            <Grid
+                x:Name="DetailTabPanel"
+                Grid.Row="1"
+                Margin="0,8,0,0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <StackPanel
+                <!-- アイテム詳細表 -->
+                <Border
                     Grid.Row="0"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid
+                            Grid.Row="0"
+                            Padding="8,6"
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="120" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="#" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="1" Text="名前" FontWeight="SemiBold" />
+                            <TextBlock
+                                Grid.Column="3"
+                                Text="Weight"
+                                FontWeight="SemiBold"
+                                ToolTipService.ToolTip="Weight は 1～5 の範囲で指定します。値が大きいほど選ばれやすくなります。" />
+                        </Grid>
+
+                        <ListView
+                            x:Name="ItemsListView"
+                            Grid.Row="1"
+                            ItemsSource="{x:Bind ViewModel.EditableItems, Mode=OneWay}"
+                            SelectedItem="{x:Bind ViewModel.SelectedEditableItem, Mode=TwoWay}"
+                            SelectionMode="Single">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Padding="8,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="24" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="120" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            Text="•"
+                                            VerticalAlignment="Center" />
+                                        <TextBox
+                                            Grid.Column="1"
+                                            Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            TextChanged="OnEditableItemTextChanged"
+                                            PlaceholderText="名前" />
+                                        <NumberBox
+                                            Grid.Column="3"
+                                            Value="{Binding Weight, Mode=TwoWay}"
+                                            Minimum="1"
+                                            Maximum="5"
+                                            MinWidth="112"
+                                            SmallChange="1"
+                                            SpinButtonPlacementMode="Compact"
+                                            ValueChanged="OnEditableItemWeightChanged"
+                                            ToolTipService.ToolTip="Weight は 1～5 の範囲で指定します。値が大きいほど選ばれやすくなります。" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                </Border>
+
+                <TextBlock
+                    Grid.Row="1"
+                    Text="{x:Bind ViewModel.ItemEditStatusText, Mode=OneWay}"
+                    Margin="0,6,0,0"
+                    FontSize="12"
+                    Foreground="DarkOrange"
+                    TextWrapping="Wrap" />
+            </Grid>
+
+            <!-- テキストタブの内容 -->
+            <Grid
+                x:Name="TextTabPanel"
+                Grid.Row="1"
+                Margin="0,8,0,0"
+                Visibility="Collapsed">
+                <TextBox
+                    x:Name="ItemsTextBox"
+                    TextChanged="OnItemsTextBoxTextChanged"
+                    AcceptsReturn="True"
+                    TextWrapping="Wrap"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    FontFamily="Consolas"
+                    PlaceholderText="テキスト貼り付けも可能です（名前,Weight / 最大30件）" />
+            </Grid>
+        </Grid>
+
+
+        <!-- ===== 右列：操作パネル ===== -->
+        <ScrollViewer
+            Grid.Column="4"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="8">
+
+                <!-- グループ ComboBox + リスト位置 + アイテム数 + クリア -->
+                <StackPanel
                     Orientation="Horizontal"
                     Spacing="8"
                     VerticalAlignment="Center">
@@ -66,9 +203,10 @@
                     <ComboBox
                         x:Name="GroupComboBox"
                         ItemsSource="{x:Bind ViewModel.GroupList, Mode=OneWay}"
+                        SelectedItem="{x:Bind ViewModel.SelectedGroup, Mode=TwoWay}"
                         DisplayMemberPath="DisplayName"
                         SelectionChanged="GroupComboBox_SelectionChanged"
-                        MinWidth="160" />
+                        MinWidth="120" />
 
                     <StackPanel
                         Orientation="Horizontal"
@@ -83,38 +221,31 @@
                     </StackPanel>
 
                     <!-- アイテム数：「n 件」 -->
-                    <StackPanel Orientation="Horizontal" Spacing="8"
+                    <StackPanel Orientation="Horizontal" Spacing="2"
                                 VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" Spacing="2"
-                                    VerticalAlignment="Center">
-                            <TextBlock
-                                Text="{x:Bind ViewModel.ItemCount, Mode=OneWay}"
-                                VerticalAlignment="Center" />
-                            <TextBlock
-                                Text="件"
-                                VerticalAlignment="Center" />
-                        </StackPanel>
-                        <Button
-                            Content="クリア"
-                            Command="{x:Bind ViewModel.ClearItemsCommand}"
-                            Padding="8,4"
-                            CornerRadius="4" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.ItemCount, Mode=OneWay}"
+                            VerticalAlignment="Center" />
+                        <TextBlock
+                            Text="件"
+                            VerticalAlignment="Center" />
                     </StackPanel>
-
+                    <Button
+                        Content="クリア"
+                        Command="{x:Bind ViewModel.ClearItemsCommand}"
+                        Padding="8,4"
+                        CornerRadius="4" />
                 </StackPanel>
 
                 <TextBlock
-                    Grid.Row="1"
                     Text="{x:Bind ViewModel.SaveStatusText, Mode=OneWay}"
-                    Margin="0,4,0,0"
                     TextWrapping="NoWrap"
                     VerticalAlignment="Center"
                     FontSize="12"
                     Opacity="0.72" />
 
-                <Grid
-                    Grid.Row="2"
-                    Margin="0,8,0,0">
+                <!-- グループ名編集 -->
+                <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="8" />
@@ -149,18 +280,15 @@
 
                 <TextBlock
                     x:Name="GroupNameUnsavedText"
-                    Grid.Row="3"
                     Text="未保存"
-                    Margin="0,4,0,0"
                     FontSize="12"
                     Foreground="DarkOrange"
                     Opacity="0" />
 
+                <!-- グループ操作 -->
                 <StackPanel
-                    Grid.Row="4"
                     Orientation="Horizontal"
-                    Spacing="8"
-                    Margin="0,8,0,0">
+                    Spacing="8">
                     <Button
                         Content="追加"
                         Command="{x:Bind ViewModel.AddGroupCommand}"
@@ -188,66 +316,50 @@
                         CornerRadius="4" />
                 </StackPanel>
 
-            </Grid>
-
-            <!-- アイテム表形式編集エリア -->
-            <Grid Grid.Row="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="120" />
-                </Grid.RowDefinitions>
-
+                <!-- 選択アイテム操作 -->
+                <TextBlock
+                    Text="選択アイテム操作"
+                    Margin="0,8,0,0"
+                    FontSize="12"
+                    FontWeight="SemiBold" />
                 <StackPanel
-                    Grid.Row="0"
-                    Spacing="4"
-                    Margin="0,0,0,8">
-                    <TextBlock
-                        Text="選択アイテム操作"
-                        FontSize="12"
-                        FontWeight="SemiBold" />
-                    <StackPanel
-                        Orientation="Horizontal"
-                        Spacing="8">
-                        <Button
-                            Content="アイテム追加"
-                            Command="{x:Bind ViewModel.AddItemRowCommand}"
-                            Padding="8,4"
-                            CornerRadius="4" />
-                        <Button
-                            Content="選択削除"
-                            Command="{x:Bind ViewModel.DeleteSelectedItemRowCommand}"
-                            Padding="8,4"
-                            CornerRadius="4" />
-                    </StackPanel>
-                    <StackPanel
-                        Orientation="Horizontal"
-                        Spacing="8">
-                        <Button
-                            Content="選択を上へ"
-                            Command="{x:Bind ViewModel.MoveItemRowUpCommand}"
-                            Padding="8,4"
-                            CornerRadius="4" />
-                        <Button
-                            Content="選択を下へ"
-                            Command="{x:Bind ViewModel.MoveItemRowDownCommand}"
-                            Padding="8,4"
-                            CornerRadius="4" />
-                    </StackPanel>
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        Content="アイテム追加"
+                        Command="{x:Bind ViewModel.AddItemRowCommand}"
+                        Padding="8,4"
+                        CornerRadius="4" />
+                    <Button
+                        Content="選択削除"
+                        Command="{x:Bind ViewModel.DeleteSelectedItemRowCommand}"
+                        Padding="8,4"
+                        CornerRadius="4" />
+                </StackPanel>
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        Content="選択を上へ"
+                        Command="{x:Bind ViewModel.MoveItemRowUpCommand}"
+                        Padding="8,4"
+                        CornerRadius="4" />
+                    <Button
+                        Content="選択を下へ"
+                        Command="{x:Bind ViewModel.MoveItemRowDownCommand}"
+                        Padding="8,4"
+                        CornerRadius="4" />
                 </StackPanel>
 
+                <!-- 一覧全体操作 -->
+                <TextBlock
+                    Text="一覧全体"
+                    Margin="0,8,0,0"
+                    FontSize="12"
+                    FontWeight="SemiBold" />
                 <StackPanel
-                    Grid.Row="1"
                     Orientation="Horizontal"
-                    Spacing="8"
-                    Margin="0,0,0,8">
-                    <TextBlock
-                        Text="一覧全体:"
-                        VerticalAlignment="Center"
-                        FontSize="12"
-                        FontWeight="SemiBold" />
+                    Spacing="8">
                     <Button
                         Content="一覧ソート"
                         Command="{x:Bind ViewModel.SortItemsCommand}"
@@ -258,99 +370,39 @@
                         Command="{x:Bind ViewModel.ShuffleItemsCommand}"
                         Padding="8,4"
                         CornerRadius="4" />
-                    <TextBlock
-                        Text="Weight は 1～5"
-                        VerticalAlignment="Center"
-                        FontSize="12"
-                        Opacity="0.72" />
+                </StackPanel>
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        Content="CSVエクスポート"
+                        Click="OnExportCsvButtonClick"
+                        Padding="8,4"
+                        CornerRadius="4" />
+                    <Button
+                        Content="CSVインポート"
+                        Click="OnImportCsvButtonClick"
+                        Padding="8,4"
+                        CornerRadius="4" />
                 </StackPanel>
 
-                <Border
-                    Grid.Row="2"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="6">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                        <Grid
-                            Grid.Row="0"
-                            Padding="8,6"
-                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="24" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="8" />
-                                <ColumnDefinition Width="120" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="#" FontWeight="SemiBold" />
-                            <TextBlock Grid.Column="1" Text="名前" FontWeight="SemiBold" />
-                            <TextBlock Grid.Column="3" Text="Weight" FontWeight="SemiBold" />
-                        </Grid>
-
-                        <ListView
-                            x:Name="ItemsListView"
-                            Grid.Row="1"
-                            ItemsSource="{x:Bind ViewModel.EditableItems, Mode=OneWay}"
-                            SelectedItem="{x:Bind ViewModel.SelectedEditableItem, Mode=TwoWay}"
-                            SelectionMode="Single">
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Padding="8,4">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="24" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="8" />
-                                            <ColumnDefinition Width="120" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock
-                                            Text="•"
-                                            VerticalAlignment="Center" />
-                                        <TextBox
-                                            Grid.Column="1"
-                                            Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                            TextChanged="OnEditableItemTextChanged"
-                                            PlaceholderText="名前" />
-                                        <NumberBox
-                                            Grid.Column="3"
-                                            Value="{Binding Weight, Mode=TwoWay}"
-                                            Minimum="1"
-                                            Maximum="5"
-                                            MinWidth="112"
-                                            SmallChange="1"
-                                            SpinButtonPlacementMode="Compact"
-                                            ValueChanged="OnEditableItemWeightChanged" />
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </Grid>
-                </Border>
-
+                <!-- ウィンドウ操作 -->
                 <TextBlock
-                    Grid.Row="3"
-                    Text="{x:Bind ViewModel.ItemEditStatusText, Mode=OneWay}"
-                    Margin="0,6,0,6"
+                    Text="ウィンドウ操作"
+                    Margin="0,8,0,0"
                     FontSize="12"
-                    Foreground="DarkOrange"
-                    TextWrapping="Wrap" />
+                    FontWeight="SemiBold" />
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        Content="ウィンドウサイズをリセット"
+                        Click="OnResetWindowSizeButtonClick"
+                        Padding="8,4"
+                        CornerRadius="4" />
+                </StackPanel>
 
-                <TextBox
-                    x:Name="ItemsTextBox"
-                    Grid.Row="4"
-                    TextChanged="OnItemsTextBoxTextChanged"
-                    AcceptsReturn="True"
-                    TextWrapping="Wrap"
-                    ScrollViewer.VerticalScrollBarVisibility="Auto"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch"
-                    FontFamily="Consolas"
-                    PlaceholderText="テキスト貼り付けも可能です（名前,Weight / 最大30件）" />
-            </Grid>
-
-        </Grid>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>

@@ -25,6 +25,12 @@ namespace AppRoulette
         /// <summary>1フレームのインターバル（ミリ秒）。約60fps。</summary>
         private const int TIMER_INTERVAL_MS = 16;
 
+        /// <summary>ウィンドウの既定の幅（ピクセル）。</summary>
+        private const int DEFAULT_WINDOW_WIDTH = 1300;
+
+        /// <summary>ウィンドウの既定の高さ（ピクセル）。</summary>
+        private const int DEFAULT_WINDOW_HEIGHT = 850;
+
         // ---------------------------------------------------------------
         // アニメーション状態
         // ---------------------------------------------------------------
@@ -45,7 +51,7 @@ namespace AppRoulette
         private bool _isUserInput;
 
         /// <summary>ウィンドウ位置情報を管理するサービス。</summary>
-        private IWindowPositionService _positionService;
+        private IWindowPositionService? _positionService;
 
         // ---------------------------------------------------------------
         // ViewModel
@@ -89,6 +95,7 @@ namespace AppRoulette
                     if (e.PropertyName == nameof(ViewModel.ItemsText))
                     {
                         RouletteCanvas?.Invalidate();
+                        UpdateItemsTextBoxFromViewModel();
                     }
 
                     // グループ名未保存状態の視覚的フィードバック
@@ -111,9 +118,10 @@ namespace AppRoulette
 
             try
             {
-                // ウィンドウサイズを1300×850に設定
+                // ウィンドウサイズを既定値に設定
                 ExtendsContentIntoTitleBar = false;
-                AppWindow.Resize(new Windows.Graphics.SizeInt32(1300, 850));
+                AppWindow.Resize(new Windows.Graphics.SizeInt32(
+                    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT));
                 UpdateGroupNameUnsavedVisualState();
 
                 // ウィンドウ位置情報を読み込んで、保存されているなら適用
@@ -122,14 +130,20 @@ namespace AppRoulette
 
                 if (savedPosition != null)
                 {
-                    // 保存された位置がある場合は、Activated イベント時に適用
-                    Activated += (sender, args) =>
+                    // 保存された位置・サイズがある場合は、初回の Activated イベント時にのみ適用
+                    void OnActivatedForRestore(object sender, WindowActivatedEventArgs args)
                     {
                         if (args.WindowActivationState != WindowActivationState.Deactivated)
                         {
-                            AppWindow.Move(new PointInt32(savedPosition.X, savedPosition.Y));
+                            AppWindow.MoveAndResize(new RectInt32(
+                                savedPosition.X,
+                                savedPosition.Y,
+                                savedPosition.Width,
+                                savedPosition.Height));
+                            Activated -= OnActivatedForRestore;
                         }
-                    };
+                    }
+                    Activated += OnActivatedForRestore;
                 }
 
                 // ウィンドウを閉じる際に位置を保存
@@ -137,6 +151,12 @@ namespace AppRoulette
                 {
                     try
                     {
+                        var positionService = _positionService;
+                        if (positionService is null)
+                        {
+                            return;
+                        }
+
                         var placement = AppWindow.Position;
                         var currentPosition = new WindowPositionInfo
                         {
@@ -145,7 +165,7 @@ namespace AppRoulette
                             Width = AppWindow.Size.Width,
                             Height = AppWindow.Size.Height,
                         };
-                        await _positionService.SaveWindowPositionAsync(currentPosition);
+                        await positionService.SaveWindowPositionAsync(currentPosition);
                     }
                     catch (Exception ex)
                     {
@@ -180,6 +200,52 @@ namespace AppRoulette
             GroupNameUnsavedText.Opacity = 0;
         }
 
+        /// <summary>
+        /// ウィンドウサイズをリセットボタンのクリックイベントを処理します。
+        /// ウィンドウのサイズを既定値（1300×850）に戻します。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnResetWindowSizeButtonClick(
+            object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                AppWindow.Resize(new Windows.Graphics.SizeInt32(
+                    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT));
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("ウィンドウサイズリセット", ex);
+            }
+        }
+
+        /// <summary>
+        /// ViewModel のアイテムテキストを下部テキストボックスに反映します。
+        /// </summary>
+        private void UpdateItemsTextBoxFromViewModel()
+        {
+            if (_isUserInput || ItemsTextBox is null)
+            {
+                return;
+            }
+
+            if (ItemsTextBox.Text == ViewModel.ItemsText)
+            {
+                return;
+            }
+
+            _isUpdatingTextBox = true;
+            try
+            {
+                ItemsTextBox.Text = ViewModel.ItemsText;
+            }
+            finally
+            {
+                _isUpdatingTextBox = false;
+            }
+        }
+
         // ---------------------------------------------------------------
         // 初期化
         // ---------------------------------------------------------------
@@ -192,6 +258,66 @@ namespace AppRoulette
         private async void OnRootGridLoaded(object sender, RoutedEventArgs e)
         {
             await ViewModel.InitializeCommand.ExecuteAsync(null);
+            UpdateItemViewTabVisualState(isDetailSelected: true);
+        }
+
+        // ---------------------------------------------------------------
+        // リスト項目タブ（詳細 / テキスト）切り替え
+        // ---------------------------------------------------------------
+
+        /// <summary>
+        /// 「詳細」タブボタンのクリックイベントハンドラー。
+        /// 詳細表パネルを表示し、テキストパネルを非表示にします。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnDetailTabButtonClick(object sender, RoutedEventArgs e)
+        {
+            UpdateItemViewTabVisualState(isDetailSelected: true);
+        }
+
+        /// <summary>
+        /// 「テキスト」タブボタンのクリックイベントハンドラー。
+        /// テキストパネルを表示し、詳細表パネルを非表示にします。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnTextTabButtonClick(object sender, RoutedEventArgs e)
+        {
+            UpdateItemViewTabVisualState(isDetailSelected: false);
+        }
+
+        /// <summary>
+        /// リスト項目タブの表示状態（パネルの表示切り替え・ボタンの選択状態）を更新します。
+        /// </summary>
+        /// <param name="isDetailSelected">「詳細」タブを選択状態にする場合は <c>true</c>。</param>
+        private void UpdateItemViewTabVisualState(bool isDetailSelected)
+        {
+            if (DetailTabPanel is null || TextTabPanel is null
+                || DetailTabButton is null || TextTabButton is null)
+            {
+                return;
+            }
+
+            DetailTabPanel.Visibility = isDetailSelected
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            TextTabPanel.Visibility = isDetailSelected
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+
+            var selectedBrush = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+            var unselectedBrush = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+
+            DetailTabButton.Foreground = isDetailSelected ? selectedBrush : unselectedBrush;
+            DetailTabButton.FontWeight = isDetailSelected
+                ? Microsoft.UI.Text.FontWeights.SemiBold
+                : Microsoft.UI.Text.FontWeights.Normal;
+
+            TextTabButton.Foreground = isDetailSelected ? unselectedBrush : selectedBrush;
+            TextTabButton.FontWeight = isDetailSelected
+                ? Microsoft.UI.Text.FontWeights.Normal
+                : Microsoft.UI.Text.FontWeights.SemiBold;
         }
 
         // ---------------------------------------------------------------
@@ -582,6 +708,79 @@ namespace AppRoulette
                 {
                     _isUserInput = false;
                 }
+            }
+        }
+
+        /// <summary>
+        /// 選択中グループのアイテム一覧をCSVファイルにエクスポートします。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnExportCsvButtonClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (ViewModel.SelectedGroup is null)
+                {
+                    return;
+                }
+
+                var picker = new Windows.Storage.Pickers.FileSavePicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation =
+                    Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeChoices.Add("CSV", new List<string> { ".csv" });
+                picker.SuggestedFileName = ViewModel.SelectedGroup.DisplayName;
+
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+
+                var csv = ViewModel.ExportItemsToCsv();
+                await Windows.Storage.FileIO.WriteTextAsync(file, csv);
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("CSVエクスポート", ex);
+            }
+        }
+
+        /// <summary>
+        /// CSVファイルを読み込み、選択中グループのアイテム一覧にインポートします。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnImportCsvButtonClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (ViewModel.SelectedGroup is null)
+                {
+                    return;
+                }
+
+                var picker = new Windows.Storage.Pickers.FileOpenPicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation =
+                    Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeFilter.Add(".csv");
+
+                var file = await picker.PickSingleFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+
+                var content = await Windows.Storage.FileIO.ReadTextAsync(file);
+                ViewModel.ImportItemsFromCsv(content);
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("CSVインポート", ex);
             }
         }
     }
