@@ -193,6 +193,7 @@ public class MainViewModel : ObservableObject
             if (SetProperty(ref _itemCount, value))
             {
                 SpinCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(CanSpinNow));
             }
         }
     }
@@ -209,9 +210,16 @@ public class MainViewModel : ObservableObject
             if (SetProperty(ref _isSpinning, value))
             {
                 SpinCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(CanSpinNow));
             }
         }
     }
+
+    /// <summary>
+    /// ルーレットを開始できるかどうかを取得します。
+    /// UI 側のボタン等の活性状態バインディングに使用します。
+    /// </summary>
+    public bool CanSpinNow => SpinCommand.CanExecute(null);
 
     /// <summary>
     /// ルーレットの出目アイテムインデックス（0 始まり）を取得します。

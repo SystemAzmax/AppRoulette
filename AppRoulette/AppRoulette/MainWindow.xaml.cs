@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
 using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using System.Linq;
 
 namespace AppRoulette
@@ -221,6 +222,28 @@ namespace AppRoulette
         }
 
         /// <summary>
+        /// 「常に最前面表示」トグルボタンのクリックイベントを処理します。
+        /// ウィンドウを常に最前面に表示するかどうかを切り替えます。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnAlwaysOnTopToggleButtonClick(
+            object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (AppWindow.Presenter is OverlappedPresenter presenter)
+                {
+                    presenter.IsAlwaysOnTop = AlwaysOnTopToggleButton.IsChecked == true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("常に最前面表示切り替え", ex);
+            }
+        }
+
+        /// <summary>
         /// ViewModel のアイテムテキストを下部テキストボックスに反映します。
         /// </summary>
         private void UpdateItemsTextBoxFromViewModel()
@@ -374,17 +397,24 @@ namespace AppRoulette
 
         /// <summary>
         /// ルーレットキャンバスのタップイベントハンドラー。
+        /// <summary>
+        /// スタートボタンのクリックイベントを処理します。
+        /// 円盤タップ時と同じ共通処理（結果決定・アニメーション開始）を実行します。
+        /// </summary>
+        /// <param name="sender">クリックされたボタン。</param>
+        /// <param name="e">クリックイベント引数。</param>
+        private void OnStartButtonClick(object sender, RoutedEventArgs e)
+        {
+            TryStartSpin();
+        }
+
+        /// <summary>
         /// ルーレット円内をタップし、かつアイテムが存在し回転中でない場合にアニメーションを開始します。
         /// </summary>
         /// <param name="sender">タップされたキャンバス。</param>
         /// <param name="e">タップイベント引数。</param>
         private void RouletteCanvas_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            if (!ViewModel.SpinCommand.CanExecute(null))
-            {
-                return;
-            }
-
             // タップ位置を取得
             var tapPoint = e.GetPosition(sender as UIElement);
             var cx = RouletteCanvas.ActualWidth / 2;
@@ -403,6 +433,20 @@ namespace AppRoulette
                 return;
             }
 
+            TryStartSpin();
+        }
+
+        /// <summary>
+        /// ルーレットを開始できる場合に、ランダムな出目を決定してアニメーションを開始します。
+        /// 円盤タップとスタートボタンの共通処理です。
+        /// </summary>
+        private void TryStartSpin()
+        {
+            if (!ViewModel.SpinCommand.CanExecute(null))
+            {
+                return;
+            }
+
             // ランダムな出目を ViewModel に決定させる
             ViewModel.SpinCommand.Execute(null);
 
@@ -412,6 +456,7 @@ namespace AppRoulette
         /// <summary>
         /// アニメーション状態を初期化してタイマーを開始します。
         /// </summary>
+
         private void StartSpinAnimation()
         {
             ViewModel.IsSpinning = true;

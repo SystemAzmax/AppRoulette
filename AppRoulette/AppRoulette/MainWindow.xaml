@@ -47,6 +47,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!--
@@ -185,6 +186,20 @@
                     FontFamily="Consolas"
                     PlaceholderText="テキスト貼り付けも可能です（名前,Weight / 最大30件）" />
             </Grid>
+
+            <!-- スタートボタン：タブ切替に関わらず常に表示 -->
+            <Button
+                Grid.Row="2"
+                Content="スタート"
+                IsEnabled="{x:Bind ViewModel.CanSpinNow, Mode=OneWay}"
+                Click="OnStartButtonClick"
+                Margin="0,12,0,0"
+                Padding="0,10"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                FontWeight="SemiBold"
+                CornerRadius="6"
+                Style="{StaticResource AccentButtonStyle}" />
         </Grid>
 
 
@@ -269,13 +284,17 @@
                         Content="変更"
                         Command="{x:Bind ViewModel.RenameGroupCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="72"
+                        HorizontalContentAlignment="Center" />
                     <Button
                         Grid.Column="4"
                         Content="リセット"
                         Command="{x:Bind ViewModel.ResetGroupNameCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="72"
+                        HorizontalContentAlignment="Center" />
                 </Grid>
 
                 <TextBlock
@@ -290,30 +309,48 @@
                     Orientation="Horizontal"
                     Spacing="8">
                     <Button
-                        Content="追加"
+                        Content="リストを追加"
                         Command="{x:Bind ViewModel.AddGroupCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="140"
+                        HorizontalContentAlignment="Center" />
                     <Button
-                        Content="複製"
-                        Command="{x:Bind ViewModel.DuplicateGroupCommand}"
-                        Padding="8,4"
-                        CornerRadius="4" />
-                    <Button
-                        Content="削除"
+                        Content="リストを削除"
                         Command="{x:Bind ViewModel.DeleteGroupCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="140"
+                        HorizontalContentAlignment="Center" />
+                </StackPanel>
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8">
                     <Button
-                        Content="上へ"
+                        Content="リストを複製"
+                        Command="{x:Bind ViewModel.DuplicateGroupCommand}"
+                        Padding="8,4"
+                        CornerRadius="4"
+                        MinWidth="140"
+                        HorizontalContentAlignment="Center" />
+                </StackPanel>
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        Content="リストを上へ"
                         Command="{x:Bind ViewModel.MoveGroupUpCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="140"
+                        HorizontalContentAlignment="Center" />
                     <Button
-                        Content="下へ"
+                        Content="リストを下へ"
                         Command="{x:Bind ViewModel.MoveGroupDownCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="140"
+                        HorizontalContentAlignment="Center" />
                 </StackPanel>
 
                 <!-- 選択アイテム操作 -->
@@ -329,12 +366,16 @@
                         Content="アイテム追加"
                         Command="{x:Bind ViewModel.AddItemRowCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="108"
+                        HorizontalContentAlignment="Center" />
                     <Button
                         Content="選択削除"
                         Command="{x:Bind ViewModel.DeleteSelectedItemRowCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="108"
+                        HorizontalContentAlignment="Center" />
                 </StackPanel>
                 <StackPanel
                     Orientation="Horizontal"
@@ -343,12 +384,16 @@
                         Content="選択を上へ"
                         Command="{x:Bind ViewModel.MoveItemRowUpCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="108"
+                        HorizontalContentAlignment="Center" />
                     <Button
                         Content="選択を下へ"
                         Command="{x:Bind ViewModel.MoveItemRowDownCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="108"
+                        HorizontalContentAlignment="Center" />
                 </StackPanel>
 
                 <!-- 一覧全体操作 -->
@@ -364,12 +409,16 @@
                         Content="一覧ソート"
                         Command="{x:Bind ViewModel.SortItemsCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="132"
+                        HorizontalContentAlignment="Center" />
                     <Button
                         Content="一覧シャッフル"
                         Command="{x:Bind ViewModel.ShuffleItemsCommand}"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="132"
+                        HorizontalContentAlignment="Center" />
                 </StackPanel>
                 <StackPanel
                     Orientation="Horizontal"
@@ -378,12 +427,16 @@
                         Content="CSVエクスポート"
                         Click="OnExportCsvButtonClick"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="132"
+                        HorizontalContentAlignment="Center" />
                     <Button
                         Content="CSVインポート"
                         Click="OnImportCsvButtonClick"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        MinWidth="132"
+                        HorizontalContentAlignment="Center" />
                 </StackPanel>
 
                 <!-- ウィンドウ操作 -->
@@ -393,13 +446,23 @@
                     FontSize="12"
                     FontWeight="SemiBold" />
                 <StackPanel
-                    Orientation="Horizontal"
+                    Orientation="Vertical"
                     Spacing="8">
                     <Button
                         Content="ウィンドウサイズをリセット"
                         Click="OnResetWindowSizeButtonClick"
                         Padding="8,4"
-                        CornerRadius="4" />
+                        CornerRadius="4"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center" />
+                    <ToggleButton
+                        x:Name="AlwaysOnTopToggleButton"
+                        Content="常に最前面表示"
+                        Click="OnAlwaysOnTopToggleButtonClick"
+                        Padding="8,4"
+                        CornerRadius="4"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center" />
                 </StackPanel>
 
             </StackPanel>
