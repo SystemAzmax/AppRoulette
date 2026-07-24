@@ -106,12 +106,13 @@
                             Padding="8,6"
                             Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="36" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="8" />
                                 <ColumnDefinition Width="120" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="#" FontWeight="SemiBold" />
+                            <TextBlock Text="有効" FontWeight="SemiBold"
+                                       ToolTipService.ToolTip="チェックを外すと抽選対象から一時的に除外されます。" />
                             <TextBlock Grid.Column="1" Text="名前" FontWeight="SemiBold" />
                             <TextBlock
                                 Grid.Column="3"
@@ -130,14 +131,18 @@
                                 <DataTemplate>
                                     <Grid Padding="8,4">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="24" />
+                                            <ColumnDefinition Width="36" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="8" />
                                             <ColumnDefinition Width="120" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock
-                                            Text="•"
-                                            VerticalAlignment="Center" />
+                                        <CheckBox
+                                            IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                            IsEnabled="{Binding CanUnchecked, Mode=OneWay}"
+                                            MinWidth="0"
+                                            Padding="0"
+                                            VerticalAlignment="Center"
+                                            ToolTipService.ToolTip="チェックを外すと抽選対象から一時的に除外されます。" />
                                         <TextBox
                                             Grid.Column="1"
                                             Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -258,6 +263,12 @@
                     VerticalAlignment="Center"
                     FontSize="12"
                     Opacity="0.72" />
+
+                <!-- 当たったら除外モード（グループごと） -->
+                <CheckBox
+                    Content="当たったら除外"
+                    IsChecked="{x:Bind ViewModel.IsExcludeOnWinEnabled, Mode=TwoWay}"
+                    ToolTipService.ToolTip="ONにすると、当選した項目が次回以降の抽選から自動的に除外されます。" />
 
                 <!-- グループ名編集 -->
                 <Grid>

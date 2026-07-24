@@ -16,6 +16,8 @@ public class RouletteGroup : ObservableObject
 
     private string _displayName = string.Empty;
 
+    private bool _excludeOnWin;
+
     /// <summary>
     /// グループの識別子（1 始まり）を取得または設定します。
     /// </summary>
@@ -28,6 +30,16 @@ public class RouletteGroup : ObservableObject
     {
         get => _displayName;
         set => SetProperty(ref _displayName, value);
+    }
+
+    /// <summary>
+    /// 「当たったら除外」モードの有効状態を取得または設定します。
+    /// true の場合、当選したアイテムの IsEnabled を false にします。
+    /// </summary>
+    public bool ExcludeOnWin
+    {
+        get => _excludeOnWin;
+        set => SetProperty(ref _excludeOnWin, value);
     }
 
     /// <summary>

@@ -106,14 +106,16 @@ public class DatabaseInitializer
                 Id INTEGER PRIMARY KEY,
                 DisplayName TEXT NOT NULL,
                 SortOrder INTEGER NOT NULL DEFAULT 0,
-                IsDeleted INTEGER NOT NULL DEFAULT 0
+                IsDeleted INTEGER NOT NULL DEFAULT 0,
+                ExcludeOnWin INTEGER NOT NULL DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS Items (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Label TEXT NOT NULL,
                 Weight INTEGER NOT NULL,
-                [GroupId] INTEGER NOT NULL
+                [GroupId] INTEGER NOT NULL,
+                IsEnabled INTEGER NOT NULL DEFAULT 1
             );
 
             CREATE TABLE IF NOT EXISTS AppSettings (
@@ -123,8 +125,10 @@ public class DatabaseInitializer
 
         _ = command.ExecuteNonQuery();
 
-        EnsureGroupsColumn(connection, "SortOrder", "INTEGER NOT NULL DEFAULT 0");
-        EnsureGroupsColumn(connection, "IsDeleted", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "Groups", "SortOrder", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "Groups", "IsDeleted", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "Groups", "ExcludeOnWin", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "Items", "IsEnabled", "INTEGER NOT NULL DEFAULT 1");
         using var updateCommand = connection.CreateCommand();
         updateCommand.CommandText = @"
             UPDATE Groups
@@ -136,18 +140,20 @@ public class DatabaseInitializer
     }
 
     /// <summary>
-    /// Groups テーブルに指定された列が存在しない場合に追加します。
+    /// 指定されたテーブルに指定された列が存在しない場合に追加します。
     /// </summary>
     /// <param name="connection">SQLite 接続。</param>
+    /// <param name="tableName">対象のテーブル名。</param>
     /// <param name="columnName">追加する列名。</param>
     /// <param name="definition">列定義。</param>
-    private static void EnsureGroupsColumn(
+    private static void EnsureColumn(
         SqliteConnection connection,
+        string tableName,
         string columnName,
         string definition)
     {
         using var checkCommand = connection.CreateCommand();
-        checkCommand.CommandText = "PRAGMA table_info(Groups);";
+        checkCommand.CommandText = $"PRAGMA table_info({tableName});";
 
         using var reader = checkCommand.ExecuteReader();
         while (reader.Read())
@@ -163,7 +169,7 @@ public class DatabaseInitializer
 
         using var alterCommand = connection.CreateCommand();
         alterCommand.CommandText =
-            $"ALTER TABLE Groups ADD COLUMN {columnName} {definition};";
+            $"ALTER TABLE {tableName} ADD COLUMN {columnName} {definition};";
         _ = alterCommand.ExecuteNonQuery();
     }
 }

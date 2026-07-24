@@ -87,9 +87,10 @@ namespace AppRoulette
             {
                 try
                 {
-                    // ルーレット再描画：アイテム数またはグループ変更時
+                    // ルーレット再描画：アイテム数、グループ、盤面アイテム変更時
                     if (e.PropertyName is nameof(ViewModel.ItemCount)
-                                       or nameof(ViewModel.SelectedGroup))
+                                       or nameof(ViewModel.SelectedGroup)
+                                       or nameof(ViewModel.WheelItems))
                     {
                         RouletteCanvas?.Invalidate();
                     }
@@ -382,9 +383,7 @@ namespace AppRoulette
             var cy = (float)(sender.ActualHeight / 2);
             var radius = size / 2f * RouletteRenderer.RADIUS_RATIO;
 
-            var items = (IReadOnlyList<AppRoulette.Models.RouletteItem>?)
-                        ViewModel.SelectedGroup?.Items
-                        ?? System.Array.Empty<AppRoulette.Models.RouletteItem>();
+            var items = ViewModel.WheelItems;
 
             RouletteRenderer.Draw(
                 args.DrawingSession,
@@ -470,7 +469,7 @@ namespace AppRoulette
             // 目的角度：選択されたアイテムがインジケーター位置に来るように調整
             var targetAngle = MainViewModel.CalcTargetAngle(
                 ViewModel.SelectedItemIndex,
-                ViewModel.SelectedGroup?.Items);
+                ViewModel.WheelItems);
 
             // 最低 MIN_SPIN_RADIANS 以上の回転を加える
             var rawDelta = targetAngle - spinAnimation.SpinStartAngle;
@@ -523,16 +522,19 @@ namespace AppRoulette
         private async System.Threading.Tasks.Task ShowResultDialogAsync()
         {
             var index = ViewModel.SelectedItemIndex;
-            var items = ViewModel.SelectedGroup?.Items;
-            if (index < 0 || items is null || index >= items.Count)
+            var items = ViewModel.WheelItems;
+            if (index < 0 || index >= items.Count)
             {
                 return;
             }
 
-            var selectedName = items[index].Name;
+            var selectedItem = items[index];
+            var selectedName = selectedItem.Name;
 
             // テキストボックス内でアイテムをハイライト選択
-            HighlightItemInTextBox(index);
+            var textIndex =
+                ViewModel.SelectedGroup?.Items.IndexOf(selectedItem) ?? -1;
+            HighlightItemInTextBox(textIndex);
 
             // ボタンを中央に配置するためのカスタムコンテンツ
             var stackPanel = new StackPanel
@@ -580,6 +582,10 @@ namespace AppRoulette
             };
 
             await dialog.ShowAsync();
+
+            // 「当たったら除外」モードの場合は当選アイテムを除外して再描画
+            ViewModel.ExcludeWinnerIfNeeded();
+            RouletteCanvas.Invalidate();
         }
 
         /// <summary>

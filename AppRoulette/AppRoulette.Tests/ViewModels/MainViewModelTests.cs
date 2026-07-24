@@ -951,4 +951,121 @@ public class MainViewModelTests
         Assert.NotNull(sut.SelectedGroup);
         Assert.Equal(1, sut.SelectedGroup.Id);
     }
+
+    // ---------------------------------------------------------------
+    // 一時的な無効化 / 当たったら除外
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public async Task WheelItems_無効化アイテムがある場合_有効アイテムのみ返す()
+    {
+        // Arrange
+        var sut = CreateSut(itemCountInGroup1: 3);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.SelectedGroup!.Items[1].IsEnabled = false;
+
+        // Assert
+        Assert.Equal(2, sut.WheelItems.Count);
+        Assert.All(sut.WheelItems, item => Assert.True(item.IsEnabled));
+    }
+
+    [Fact]
+    public async Task Spin_無効化アイテムがある場合_有効アイテムから選択される()
+    {
+        // Arrange
+        var sut = CreateSut(itemCountInGroup1: 3);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.SelectedGroup!.Items[0].IsEnabled = false;
+
+        // Act
+        sut.SpinCommand.Execute(null);
+
+        // Assert
+        Assert.InRange(sut.SelectedItemIndex, 0, 1);
+        Assert.True(sut.WheelItems[sut.SelectedItemIndex].IsEnabled);
+    }
+
+    [Fact]
+    public async Task Spin_全アイテムが無効の場合_実行できない()
+    {
+        // Arrange
+        var sut = CreateSut(itemCountInGroup1: 2);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        foreach (var item in sut.SelectedGroup!.Items)
+        {
+            item.IsEnabled = false;
+        }
+
+        // Assert
+        Assert.False(sut.SpinCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ExcludeWinnerIfNeeded_モード有効時_当選アイテムが無効化される()
+    {
+        // Arrange
+        var sut = CreateSut(itemCountInGroup1: 3);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.IsExcludeOnWinEnabled = true;
+        sut.SpinCommand.Execute(null);
+        var winner = sut.WheelItems[sut.SelectedItemIndex];
+
+        // Act
+        sut.ExcludeWinnerIfNeeded();
+
+        // Assert
+        Assert.False(winner.IsEnabled);
+        Assert.Equal(2, sut.WheelItems.Count);
+    }
+
+    [Fact]
+    public async Task ExcludeWinnerIfNeeded_モード無効時_当選アイテムは無効化されない()
+    {
+        // Arrange
+        var sut = CreateSut(itemCountInGroup1: 3);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.SpinCommand.Execute(null);
+        var winner = sut.WheelItems[sut.SelectedItemIndex];
+
+        // Act
+        sut.ExcludeWinnerIfNeeded();
+
+        // Assert
+        Assert.True(winner.IsEnabled);
+        Assert.Equal(3, sut.WheelItems.Count);
+    }
+
+    [Fact]
+    public async Task ExcludeWinnerIfNeeded_有効アイテムが残り1件の場合_無効化されない()
+    {
+        // Arrange
+        var sut = CreateSut(itemCountInGroup1: 1);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.IsExcludeOnWinEnabled = true;
+        sut.SpinCommand.Execute(null);
+        var winner = sut.WheelItems[sut.SelectedItemIndex];
+
+        // Act
+        sut.ExcludeWinnerIfNeeded();
+
+        // Assert
+        Assert.True(winner.IsEnabled);
+        Assert.Single(sut.WheelItems);
+    }
+
+    [Fact]
+    public async Task IsExcludeOnWinEnabled_設定変更時_選択中グループへ反映される()
+    {
+        // Arrange
+        var sut = CreateSut(itemCountInGroup1: 1);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.IsExcludeOnWinEnabled = true;
+
+        // Assert
+        Assert.True(sut.SelectedGroup!.ExcludeOnWin);
+    }
 }

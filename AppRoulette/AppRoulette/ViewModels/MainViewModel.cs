@@ -83,6 +83,9 @@ public class MainViewModel : ObservableObject
 
     private string _syncStatusText = SYNC_STATUS_READY;
 
+    /// <summary>直近のスピンで当選したアイテム。</summary>
+    private RouletteItem? _lastWinner;
+
     /// <summary>
     /// ComboBox に表示するグループ一覧を取得します。
     /// </summary>
@@ -232,6 +235,34 @@ public class MainViewModel : ObservableObject
     /// UI 側のボタン等の活性状態バインディングに使用します。
     /// </summary>
     public bool CanSpinNow => SpinCommand.CanExecute(null);
+
+    /// <summary>
+    /// ルーレット盤面・抽選の対象となる有効なアイテム一覧を取得します。
+    /// IsEnabled が false のアイテムは除外されます。
+    /// </summary>
+    public IReadOnlyList<RouletteItem> WheelItems =>
+        SelectedGroup?.Items.Where(item => item.IsEnabled).ToList()
+        ?? (IReadOnlyList<RouletteItem>)Array.Empty<RouletteItem>();
+
+    /// <summary>
+    /// 選択中グループの「当たったら除外」モードを取得または設定します。
+    /// 設定変更時は SQLite に永続化します。
+    /// </summary>
+    public bool IsExcludeOnWinEnabled
+    {
+        get => SelectedGroup?.ExcludeOnWin ?? false;
+        set
+        {
+            if (SelectedGroup is null || SelectedGroup.ExcludeOnWin == value)
+            {
+                return;
+            }
+
+            SelectedGroup.ExcludeOnWin = value;
+            OnPropertyChanged();
+            _ = SaveExcludeOnWinSafelyAsync(SelectedGroup.Id, value);
+        }
+    }
 
     /// <summary>
     /// ルーレットの出目アイテムインデックス（0 始まり）を取得します。
@@ -437,6 +468,7 @@ public class MainViewModel : ObservableObject
                 .Select(item => new RouletteItem(item.Label)
                 {
                     Weight = item.Weight,
+                    IsEnabled = item.IsEnabled,
                 })
                 .ToList();
         }
@@ -570,8 +602,13 @@ public class MainViewModel : ObservableObject
         RouletteGroup group, SyncGroupData remote)
     {
         group.DisplayName = remote.DisplayName;
+        group.ExcludeOnWin = remote.ExcludeOnWin;
         group.Items = remote.Items
-            .Select(i => new RouletteItem(i.Name) { Weight = i.Weight })
+            .Select(i => new RouletteItem(i.Name)
+            {
+                Weight = i.Weight,
+                IsEnabled = i.IsEnabled,
+            })
             .Take(RouletteGroup.MAX_ITEM_COUNT)
             .ToList();
 
@@ -598,23 +635,85 @@ public class MainViewModel : ObservableObject
     /// </summary>
     private void Spin()
     {
-        if (SelectedGroup is null || SelectedGroup.Items.Count == 0)
+        var wheelItems = WheelItems;
+        if (wheelItems.Count == 0)
         {
             return;
         }
 
-        var selectedItem = _randomService.SelectByWeight(SelectedGroup.Items);
+        var selectedItem = _randomService.SelectByWeight(wheelItems);
         if (selectedItem is not null)
         {
-            SelectedItemIndex = SelectedGroup.Items.IndexOf(selectedItem);
+            _lastWinner = selectedItem;
+            SelectedItemIndex = wheelItems.ToList().IndexOf(selectedItem);
+        }
+    }
+
+    /// <summary>
+    /// 「当たったら除外」モードが有効な場合、
+    /// 直近の当選アイテムを抽選対象から除外して保存します。
+    /// 有効なアイテムが残り1件の場合は除外しません。
+    /// </summary>
+    public void ExcludeWinnerIfNeeded()
+    {
+        if (SelectedGroup is null
+            || !SelectedGroup.ExcludeOnWin
+            || _lastWinner is null)
+        {
+            return;
+        }
+
+        if (SelectedGroup.Items.Count(item => item.IsEnabled) <= 1)
+        {
+            return;
+        }
+
+        var groupIndex = SelectedGroup.Items.IndexOf(_lastWinner);
+        _lastWinner.IsEnabled = false;
+        _lastWinner = null;
+        SelectedItemIndex = -1;
+
+        if (groupIndex >= 0 && groupIndex < EditableItems.Count)
+        {
+            // 編集UIのクローンにも反映し、保存処理を発火させる
+            EditableItems[groupIndex].IsEnabled = false;
+        }
+        else
+        {
+            ScheduleItemsSave(SelectedGroup);
+        }
+
+        OnPropertyChanged(nameof(WheelItems));
+        SpinCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanSpinNow));
+    }
+
+    /// <summary>
+    /// 「当たったら除外」設定を保存し、失敗時はログに記録します。
+    /// </summary>
+    /// <param name="groupId">保存対象グループの識別子。</param>
+    /// <param name="excludeOnWin">「当たったら除外」の有効状態。</param>
+    private async Task SaveExcludeOnWinSafelyAsync(int groupId, bool excludeOnWin)
+    {
+        try
+        {
+            await _groupRepository.SaveGroupExcludeOnWinAsync(
+                groupId, excludeOnWin);
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogError("当たったら除外設定保存", ex);
         }
     }
 
     /// <summary>
     /// ルーレットを開始できるかどうかを返します。
-    /// アイテムが 1 件以上存在し、かつ回転中でない場合に <c>true</c>。
+    /// 有効なアイテムが 1 件以上存在し、かつ回転中でない場合に <c>true</c>。
     /// </summary>
-    private bool CanSpin() => ItemCount > 0 && !IsSpinning;
+    private bool CanSpin() =>
+        !IsSpinning
+        && SelectedGroup is not null
+        && SelectedGroup.Items.Any(item => item.IsEnabled);
 
     /// <summary>
     /// 選択中グループの表示名を変更して保存します。
@@ -1075,6 +1174,9 @@ public class MainViewModel : ObservableObject
         SetItemsTextWithoutParsing(items);
         UpdateItemEditState();
         ScheduleItemsSave(SelectedGroup);
+        OnPropertyChanged(nameof(WheelItems));
+        SpinCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanSpinNow));
     }
 
     /// <summary>
@@ -1105,6 +1207,7 @@ public class MainViewModel : ObservableObject
 
         SelectedEditableItem = EditableItems.FirstOrDefault();
         UpdateItemEditState();
+        UpdateCanUncheckedForAllItems();
     }
 
     /// <summary>
@@ -1129,8 +1232,8 @@ public class MainViewModel : ObservableObject
 
     /// <summary>
     /// 編集用アイテムコレクションの変更を処理します。
-    /// </summary>
-    private void EditableItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+     /// </summary>
+     private void EditableItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.OldItems is not null)
         {
@@ -1152,6 +1255,7 @@ public class MainViewModel : ObservableObject
         if (!_isSyncingEditableItems)
         {
             UpdateItemEditState();
+            UpdateCanUncheckedForAllItems();
         }
     }
 
@@ -1159,12 +1263,34 @@ public class MainViewModel : ObservableObject
     /// 表形式編集 UI の行プロパティ変更を処理します。
     /// </summary>
     private void EditableItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (!_isSyncingEditableItems)
-        {
-            ApplyEditableItemsToSelectedGroup();
-        }
-    }
+       {
+           if (_isSyncingEditableItems)
+           {
+               return;
+           }
+
+           if (e.PropertyName == nameof(RouletteItem.IsEnabled))
+           {
+               // 有効状態が変わった場合、すべてのアイテムのCanUncheckedを更新
+               UpdateCanUncheckedForAllItems();
+           }
+
+           ApplyEditableItemsToSelectedGroup();
+       }
+
+       /// <summary>
+       /// すべてのアイテムの「チェック外し可能」フラグを更新します。
+       /// 有効なアイテムが2個以下の場合、有効なアイテムはチェック外し不可になります。
+       /// </summary>
+       private void UpdateCanUncheckedForAllItems()
+       {
+           var enabledCount = EditableItems.Count(item => item.IsEnabled);
+           foreach (var item in EditableItems)
+           {
+               // 有効なアイテムが2個以下で、かつこのアイテムが有効な場合は外せない
+               item.CanUnchecked = !(enabledCount <= 2 && item.IsEnabled);
+           }
+       }
 
     /// <summary>
     /// 新規アイテム行の重複しない既定名を作成します。
@@ -1200,10 +1326,12 @@ public class MainViewModel : ObservableObject
     /// <param name="item">コピー元アイテム。</param>
     /// <returns>コピーされたアイテム。</returns>
     private static RouletteItem CloneItem(RouletteItem item) =>
-        new(item.Name)
-        {
-            Weight = item.Weight,
-        };
+       new(item.Name)
+       {
+           Weight = item.Weight,
+           IsEnabled = item.IsEnabled,
+           CanUnchecked = item.CanUnchecked,
+       };
 
     /// <summary>
     /// 選択中のグループの全アイテムをクリアします。
@@ -1250,6 +1378,9 @@ public class MainViewModel : ObservableObject
         ReplaceEditableItems(items);
         ItemCount = items.Count;
         SelectedItemIndex = -1;
+        OnPropertyChanged(nameof(WheelItems));
+        SpinCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanSpinNow));
 
         if (value != _previousItemsText)
         {
@@ -1395,6 +1526,9 @@ public class MainViewModel : ObservableObject
         ItemsText = text;
         ItemCount = value.Items.Count;
         SelectedItemIndex = -1;
+        _lastWinner = null;
+        OnPropertyChanged(nameof(IsExcludeOnWinEnabled));
+        OnPropertyChanged(nameof(WheelItems));
 
         _ = SaveLastSelectedGroupIdSafelyAsync(value.Id);
     }

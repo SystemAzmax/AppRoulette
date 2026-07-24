@@ -24,6 +24,12 @@ public class Item
     public int Weight { get; set; } = 1;
 
     /// <summary>
+    /// アイテムが抽選対象かどうか。
+    /// デフォルトは true です。
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
     /// アイテムが属するルーレットグループ。
     /// </summary>
     public RouletteGroup? Group { get; set; }
