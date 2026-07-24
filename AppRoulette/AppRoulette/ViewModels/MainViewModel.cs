@@ -27,10 +27,20 @@ public class MainViewModel : ObservableObject
 
     private const string DEFAULT_NEW_ITEM_NAME = "新しいアイテム";
 
+    private const string SYNC_STATUS_READY = "同期待機";
+
+    private const string SYNC_STATUS_SYNCING = "同期中";
+
+    private const string SYNC_STATUS_SYNCED = "同期済み";
+
+    private const string SYNC_STATUS_FAILED = "同期失敗";
+
     private readonly IRandomService _randomService;
     private readonly IItemRepository _itemRepository;
     private readonly IGroupRepository _groupRepository;
     private readonly IAppSettingsRepository _appSettingsRepository;
+    private readonly ICloudSyncService? _cloudSyncService;
+    private readonly SyncTimestampStore? _syncTimestampStore;
 
     private readonly Dictionary<int, CancellationTokenSource> _saveDebounceTokens =
         new();
@@ -70,6 +80,8 @@ public class MainViewModel : ObservableObject
     private bool _isSyncingItemsText;
 
     private bool _isSyncingEditableItems;
+
+    private string _syncStatusText = SYNC_STATUS_READY;
 
     /// <summary>
     /// ComboBox に表示するグループ一覧を取得します。
@@ -333,6 +345,25 @@ public class MainViewModel : ObservableObject
     /// <summary>表形式編集 UI のアイテムをシャッフルするコマンド。</summary>
     public IRelayCommand ShuffleItemsCommand { get; }
 
+    /// <summary>全グループを OneDrive フォルダーと手動同期するコマンド。</summary>
+    public IAsyncRelayCommand SyncAllCommand { get; }
+
+    /// <summary>
+    /// 同期機能が利用可能（OneDrive フォルダー検出済み）か
+    /// どうかを取得します。
+    /// </summary>
+    public bool IsSyncAvailable =>
+        _cloudSyncService is not null && _syncTimestampStore is not null;
+
+    /// <summary>
+    /// 同期状態の表示テキストを取得します。
+    /// </summary>
+    public string SyncStatusText
+    {
+        get => _syncStatusText;
+        private set => SetProperty(ref _syncStatusText, value);
+    }
+
     /// <summary>
     /// <see cref="MainViewModel"/> を初期化します。
     /// </summary>
@@ -340,16 +371,22 @@ public class MainViewModel : ObservableObject
     /// <param name="itemRepository">SQLite Item リポジトリ。</param>
     /// <param name="groupRepository">SQLite Group リポジトリ。</param>
     /// <param name="appSettingsRepository">アプリ設定リポジトリ。</param>
+    /// <param name="cloudSyncService">クラウド同期サービス。null の場合は同期無効。</param>
+    /// <param name="syncTimestampStore">同期タイムスタンプストア。null の場合は同期無効。</param>
     public MainViewModel(
         IRandomService randomService,
         IItemRepository itemRepository,
         IGroupRepository groupRepository,
-        IAppSettingsRepository appSettingsRepository)
+        IAppSettingsRepository appSettingsRepository,
+        ICloudSyncService? cloudSyncService = null,
+        SyncTimestampStore? syncTimestampStore = null)
     {
         _randomService = randomService;
         _itemRepository = itemRepository;
         _groupRepository = groupRepository;
         _appSettingsRepository = appSettingsRepository;
+        _cloudSyncService = cloudSyncService;
+        _syncTimestampStore = syncTimestampStore;
         InitializeCommand = new AsyncRelayCommand(InitializeAsync);
         SpinCommand = new RelayCommand(Spin, CanSpin);
         ClearItemsCommand = new RelayCommand(ClearItems);
@@ -368,6 +405,9 @@ public class MainViewModel : ObservableObject
         MoveItemRowDownCommand = new RelayCommand(MoveItemRowDown, CanMoveItemRowDown);
         SortItemsCommand = new RelayCommand(SortItems, CanReorderItems);
         ShuffleItemsCommand = new RelayCommand(ShuffleItems, CanReorderItems);
+        SyncAllCommand = new AsyncRelayCommand(
+            SyncAllAsync,
+            () => IsSyncAvailable);
 
         EditableItems.CollectionChanged += EditableItems_CollectionChanged;
     }
@@ -409,6 +449,147 @@ public class MainViewModel : ObservableObject
             ?? (GroupList.Count > 0 ? GroupList[0] : null);
         SelectedGroup = selectedGroup;
         UpdateGroupCommandStates();
+
+        await DownloadOnStartupAsync();
+    }
+
+    /// <summary>
+    /// 起動時に選択中グループの OneDrive フォルダーのデータを
+    /// ダウンロードして新しければ適用します。
+    /// </summary>
+    private async Task DownloadOnStartupAsync()
+    {
+        if (!IsSyncAvailable)
+        {
+            return;
+        }
+
+        if (SelectedGroup is not null)
+        {
+            await DownloadAndApplyGroupAsync(SelectedGroup.Id);
+        }
+
+        SyncStatusText = SYNC_STATUS_SYNCED;
+    }
+
+    /// <summary>
+    /// 全グループをクラウドと双方向に同期します。
+    /// 各グループについてタイムスタンプの新しい方を採用します。
+    /// </summary>
+    private async Task SyncAllAsync()
+    {
+        if (_cloudSyncService is null || _syncTimestampStore is null)
+        {
+            return;
+        }
+
+        SyncStatusText = SYNC_STATUS_SYNCING;
+
+        try
+        {
+            var remoteGroups = await _cloudSyncService.DownloadAllGroupsAsync();
+            var remoteById = remoteGroups.ToDictionary(g => g.GroupId);
+            var uploadTargets = new List<SyncGroupData>();
+
+            foreach (var group in GroupList)
+            {
+                var localTimestamp =
+                    await _syncTimestampStore.GetAsync(group.Id)
+                    ?? DateTime.MinValue;
+                var local = SyncGroupData.FromGroup(group, localTimestamp);
+                remoteById.TryGetValue(group.Id, out var remote);
+
+                if (SyncConflictResolver.ShouldApplyRemote(local, remote))
+                {
+                    await ApplyRemoteGroupAsync(group, remote!);
+                }
+                else
+                {
+                    uploadTargets.Add(local);
+                }
+            }
+
+            var succeeded =
+                await _cloudSyncService.UploadAllGroupsAsync(uploadTargets);
+            SyncStatusText = succeeded
+                ? SYNC_STATUS_SYNCED
+                : SYNC_STATUS_FAILED;
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = SYNC_STATUS_FAILED;
+            ApplicationLogger.LogError("手動同期", ex);
+        }
+    }
+
+    /// <summary>
+    /// 指定グループのクラウドデータをダウンロードし、
+    /// ローカルより新しい場合のみ適用します。
+    /// </summary>
+    /// <param name="groupId">グループID。</param>
+    private async Task DownloadAndApplyGroupAsync(int groupId)
+    {
+        if (_cloudSyncService is null || _syncTimestampStore is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var remote = await _cloudSyncService.DownloadGroupAsync(groupId);
+            var group = GroupList.FirstOrDefault(g => g.Id == groupId);
+            if (group is null || remote is null)
+            {
+                return;
+            }
+
+            var localTimestamp =
+                await _syncTimestampStore.GetAsync(groupId)
+                ?? DateTime.MinValue;
+            var local = SyncGroupData.FromGroup(group, localTimestamp);
+
+            if (SyncConflictResolver.ShouldApplyRemote(local, remote))
+            {
+                await ApplyRemoteGroupAsync(group, remote);
+            }
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogError("クラウドデータ取得", ex);
+        }
+    }
+
+    /// <summary>
+    /// クラウドのグループデータをローカルグループへ適用し、
+    /// SQLite とタイムスタンプストアに保存します。
+    /// 選択中グループの場合は編集UIも更新します。
+    /// </summary>
+    /// <param name="group">適用先のローカルグループ。</param>
+    /// <param name="remote">適用するクラウドデータ。</param>
+    private async Task ApplyRemoteGroupAsync(
+        RouletteGroup group, SyncGroupData remote)
+    {
+        group.DisplayName = remote.DisplayName;
+        group.Items = remote.Items
+            .Select(i => new RouletteItem(i.Name) { Weight = i.Weight })
+            .Take(RouletteGroup.MAX_ITEM_COUNT)
+            .ToList();
+
+        await _groupRepository.SaveGroupNameAsync(
+            group.Id, remote.DisplayName);
+        await _itemRepository.SaveItemsByGroupAsync(
+            group.Id, group.Items);
+
+        if (_syncTimestampStore is not null)
+        {
+            await _syncTimestampStore.SetAsync(
+                group.Id, remote.LastModifiedUtc);
+        }
+
+        if (ReferenceEquals(group, SelectedGroup))
+        {
+            OnSelectedGroupChanged(group);
+        }
     }
 
     /// <summary>
@@ -1152,6 +1333,39 @@ public class MainViewModel : ObservableObject
 
         cancellationToken.ThrowIfCancellationRequested();
         SaveStatusText = SAVE_STATUS_SAVED;
+
+        // Fire-and-forget: クラウドへの自動アップロードは保存完了を
+        // ブロックしない。失敗時はログと状態表示のみ更新する。
+        _ = UploadGroupSafelyAsync(group);
+    }
+
+    /// <summary>
+    /// 同期が利用可能な場合に指定グループを OneDrive フォルダーへ
+    /// アップロードします。失敗してもアプリ動作は継続します。
+    /// </summary>
+    /// <param name="group">アップロードするグループ。</param>
+    private async Task UploadGroupSafelyAsync(RouletteGroup group)
+    {
+        if (_cloudSyncService is null || _syncTimestampStore is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var now = DateTime.UtcNow;
+            await _syncTimestampStore.SetAsync(group.Id, now);
+            var data = SyncGroupData.FromGroup(group, now);
+            var succeeded = await _cloudSyncService.UploadGroupAsync(data);
+            SyncStatusText = succeeded
+                ? SYNC_STATUS_SYNCED
+                : SYNC_STATUS_FAILED;
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = SYNC_STATUS_FAILED;
+            ApplicationLogger.LogError("自動アップロード", ex);
+        }
     }
 
     /// <summary>

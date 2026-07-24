@@ -79,7 +79,9 @@ namespace AppRoulette
                 new RandomService(),
                 new SqliteItemRepository(),
                 new SqliteGroupRepository(),
-                new SqliteAppSettingsRepository());
+                new SqliteAppSettingsRepository(),
+                new OneDriveFolderSyncService(),
+                new SyncTimestampStore());
 
             ViewModel.PropertyChanged += (_, e) =>
             {

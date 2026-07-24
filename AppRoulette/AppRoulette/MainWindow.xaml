@@ -439,6 +439,29 @@
                         HorizontalContentAlignment="Center" />
                 </StackPanel>
 
+                <!-- OneDrive 同期 -->
+                <TextBlock
+                    Text="OneDrive 同期"
+                    Margin="0,8,0,0"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Visibility="{x:Bind ViewModel.IsSyncAvailable}" />
+                <StackPanel
+                    Orientation="Vertical"
+                    Spacing="8"
+                    Visibility="{x:Bind ViewModel.IsSyncAvailable}">
+                    <Button
+                        Content="今すぐ同期"
+                        Command="{x:Bind ViewModel.SyncAllCommand}"
+                        Padding="8,4"
+                        CornerRadius="4"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center" />
+                    <TextBlock
+                        Text="{x:Bind ViewModel.SyncStatusText, Mode=OneWay}"
+                        FontSize="11" />
+                </StackPanel>
+
                 <!-- ウィンドウ操作 -->
                 <TextBlock
                     Text="ウィンドウ操作"
