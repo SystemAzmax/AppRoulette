@@ -59,24 +59,39 @@
                 Grid.Row="0"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="0,0,0,1">
-                <StackPanel Orientation="Horizontal" Spacing="0">
-                    <Button
-                        x:Name="DetailTabButton"
-                        Content="詳細"
-                        Click="OnDetailTabButtonClick"
-                        Padding="16,8"
-                        CornerRadius="0"
-                        Background="Transparent"
-                        BorderThickness="0" />
-                    <Button
-                        x:Name="TextTabButton"
-                        Content="テキスト"
-                        Click="OnTextTabButtonClick"
-                        Padding="16,8"
-                        CornerRadius="0"
-                        Background="Transparent"
-                        BorderThickness="0" />
-                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Spacing="0">
+                        <Button
+                            x:Name="DetailTabButton"
+                            Content="詳細"
+                            Click="OnDetailTabButtonClick"
+                            Padding="16,8"
+                            CornerRadius="0"
+                            Background="Transparent"
+                            BorderThickness="0" />
+                        <Button
+                            x:Name="TextTabButton"
+                            Content="テキスト"
+                            Click="OnTextTabButtonClick"
+                            Padding="16,8"
+                            CornerRadius="0"
+                            Background="Transparent"
+                            BorderThickness="0" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Grid.Column="2"
+                        Text="{x:Bind ViewModel.ItemCountStatusText, Mode=OneWay}"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Margin="0,0,8,0" />
+                </Grid>
             </Border>
 
             <!-- 詳細タブの内容 -->
@@ -240,16 +255,6 @@
                             VerticalAlignment="Center" />
                     </StackPanel>
 
-                    <!-- アイテム数：「n 件」 -->
-                    <StackPanel Orientation="Horizontal" Spacing="2"
-                                VerticalAlignment="Center">
-                        <TextBlock
-                            Text="{x:Bind ViewModel.ItemCount, Mode=OneWay}"
-                            VerticalAlignment="Center" />
-                        <TextBlock
-                            Text="件"
-                            VerticalAlignment="Center" />
-                    </StackPanel>
                     <Button
                         Content="クリア"
                         Command="{x:Bind ViewModel.ClearItemsCommand}"

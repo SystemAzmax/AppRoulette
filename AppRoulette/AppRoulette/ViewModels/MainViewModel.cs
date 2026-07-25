@@ -209,9 +209,16 @@ public class MainViewModel : ObservableObject
             {
                 SpinCommand.NotifyCanExecuteChanged();
                 OnPropertyChanged(nameof(CanSpinNow));
+                OnPropertyChanged(nameof(ItemCountStatusText));
             }
         }
     }
+
+    /// <summary>
+    /// 現在のアイテム数と最大値を「現在数/最大値」で取得します。
+    /// </summary>
+    public string ItemCountStatusText =>
+        $"{ItemCount}/{RouletteGroup.MAX_ITEM_COUNT}";
 
     /// <summary>
     /// ルーレットが回転中かどうかを取得または設定します。
