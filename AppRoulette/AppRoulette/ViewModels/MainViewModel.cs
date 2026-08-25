@@ -939,7 +939,7 @@ public class MainViewModel : ObservableObject
             var newIndex = oldIndex + direction;
             GroupList.Move(oldIndex, newIndex);
             await _groupRepository.SaveGroupOrderAsync(GroupList);
-            OnPropertyChanged(nameof(SelectedGroup));
+            SelectedGroup = selectedGroup;
             OnPropertyChanged(nameof(SelectedGroupPositionText));
             SaveStatusText = SAVE_STATUS_SAVED;
             UpdateGroupCommandStates();
