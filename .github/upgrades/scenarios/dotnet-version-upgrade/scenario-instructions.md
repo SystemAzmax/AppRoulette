@@ -27,3 +27,8 @@
 - Single atomic upgrade — all projects updated together
 - Validate full solution build after upgrade
 - Resolve Microsoft.Data.Sqlite (→10.0.11) and Microsoft.Graphics.Win2D (→1.1.0) inline during the upgrade task
+
+## Build Tool Decisions
+- **AppRoulette.csproj**: dotnet build (SDK-style, no special requirements)
+- **AppRoulette.Tests.csproj**: dotnet build (SDK-style, no special requirements)
+- **AppRoulette (Package).wapproj**: msbuild.exe (full VS) — DesktopBridge targets not available via dotnet CLI (MSB4019)
