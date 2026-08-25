@@ -1,0 +1,1272 @@
+{
+  "settings": {
+    "components": {
+      "code": true,
+      "binaries": false
+    },
+    "targetId": "net10.0",
+    "targetDisplayName": ".NETCoreApp,Version=v10.0"
+  },
+  "analysisStartTime": "2026-08-25T10:41:14.6611042Z",
+  "analysisEndTime": "2026-08-25T10:41:23.602922Z",
+  "privacyModeHelpUrl": "https://go.microsoft.com/fwlink/?linkid=2270980",
+  "stats": {
+    "summary": {
+      "projects": 3,
+      "issues": 6,
+      "incidents": 42,
+      "effort": 42
+    },
+    "charts": {
+      "severity": {
+        "Mandatory": 4,
+        "Optional": 1,
+        "Potential": 37,
+        "Information": 0
+      },
+      "category": {
+        "NuGet": 3,
+        "Project": 3,
+        "Api": 36
+      }
+    }
+  },
+  "projects": [
+    {
+      "path": "AppRoulette\\AppRoulette (Package)\\AppRoulette (Package).wapproj",
+      "startingProject": true,
+      "issues": 1,
+      "storyPoints": 1,
+      "properties": {
+        "appName": "AppRoulette (Package)",
+        "projectKind": "WinUI",
+        "frameworks": [
+          "net451"
+        ],
+        "languages": [
+          ""
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 7,
+        "numberOfCodeFiles": 0,
+        "linesTotal": 300,
+        "linesOfCode": 0,
+        "totalApiScanned": 0,
+        "minLinesOfCodeToChange": 0,
+        "maxLinesOfCodeToChange": 0
+      },
+      "ruleInstances": [
+        {
+          "incidentId": "f5abb3d4-d54d-40b9-b739-b9a9ceb04223",
+          "ruleId": "Project.0002",
+          "projectPath": "AppRoulette\\AppRoulette (Package)\\AppRoulette (Package).wapproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net451\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.26100.0",
+              "protected": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net451\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.26100.0"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette (Package)\\AppRoulette (Package).wapproj",
+            "snippet": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net451\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.26100.0",
+            "protectedSnippet": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net451\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.26100.0",
+            "properties": {
+              "CurrentTargetFramework": "net451",
+              "RecommendedTargetFramework": "net10.0-windows10.0.26100.0"
+            }
+          }
+        }
+      ],
+      "features": []
+    },
+    {
+      "path": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+      "startingProject": true,
+      "issues": 5,
+      "storyPoints": 39,
+      "properties": {
+        "appName": "AppRoulette",
+        "projectKind": "WinForms",
+        "frameworks": [
+          "net8.0-windows10.0.19041.0"
+        ],
+        "languages": [
+          "C#"
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 30,
+        "numberOfCodeFiles": 30,
+        "linesTotal": 5386,
+        "linesOfCode": 5386,
+        "totalApiScanned": 5431,
+        "minLinesOfCodeToChange": 36,
+        "maxLinesOfCodeToChange": 36
+      },
+      "ruleInstances": [
+        {
+          "incidentId": "eea5d987-7a5f-4d6e-92da-f137ee9beda7",
+          "ruleId": "NuGet.0002",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Microsoft.Data.Sqlite, 8.0.0\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nRemove Microsoft.Data.Sqlite, and replace with new package Microsoft.Data.Sqlite 10.0.11",
+              "protected": "Microsoft.Data.Sqlite, 8.0.0\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nRemove Microsoft.Data.Sqlite, and replace with new package Microsoft.Data.Sqlite 10.0.11"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+            "snippet": "Microsoft.Data.Sqlite, 8.0.0\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nRemove Microsoft.Data.Sqlite, and replace with new package Microsoft.Data.Sqlite 10.0.11",
+            "protectedSnippet": "Microsoft.Data.Sqlite, 8.0.0\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nRemove Microsoft.Data.Sqlite, and replace with new package Microsoft.Data.Sqlite 10.0.11",
+            "label": "Microsoft.Data.Sqlite 8.0.0",
+            "properties": {
+              "PackageId": "Microsoft.Data.Sqlite",
+              "PackageVersion": "8.0.0",
+              "PackageNewVersion": "10.0.11",
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "2c7a3f5d-744c-4c9c-880b-281adb097b6e",
+          "ruleId": "NuGet.0001",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "Microsoft.Graphics.Win2D, 1.4.0\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nMicrosoft.Graphics.Win2D, 1.1.0",
+              "protected": "Microsoft.Graphics.Win2D, 1.4.0\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nMicrosoft.Graphics.Win2D, 1.1.0"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+            "snippet": "Microsoft.Graphics.Win2D, 1.4.0\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nMicrosoft.Graphics.Win2D, 1.1.0",
+            "protectedSnippet": "Microsoft.Graphics.Win2D, 1.4.0\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nMicrosoft.Graphics.Win2D, 1.1.0",
+            "label": "Microsoft.Graphics.Win2D 1.4.0",
+            "properties": {
+              "PackageId": "Microsoft.Graphics.Win2D",
+              "PackageVersion": "1.4.0",
+              "PackageNewVersion": "1.1.0",
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "c77353ed-dc50-43c8-be7c-872a16d0098d",
+          "ruleId": "Project.0002",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net8.0-windows10.0.19041.0\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.22000.0",
+              "protected": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net8.0-windows10.0.19041.0\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.22000.0"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+            "snippet": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net8.0-windows10.0.19041.0\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.22000.0",
+            "protectedSnippet": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net8.0-windows10.0.19041.0\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.22000.0",
+            "properties": {
+              "CurrentTargetFramework": "net8.0-windows10.0.19041.0",
+              "RecommendedTargetFramework": "net10.0-windows10.0.22000.0"
+            }
+          }
+        },
+        {
+          "incidentId": "399daedd-9bb9-403a-be27-d8708242ee73",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "return that.Size;",
+              "protected": "T:Windows.Foundation.Size"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\obj\\x64\\Debug\\net8.0-windows10.0.19041.0\\XamlTypeInfo.g.cs",
+            "snippet": "return that.Size;",
+            "protectedSnippet": "T:Windows.Foundation.Size",
+            "label": "T:Windows.Foundation.Size",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "89358"
+            },
+            "line": 938,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "e7b7f0f0-09b3-4a21-b607-a5f87275a19c",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "that.ClearColor = (global::Windows.UI.Color)Value;",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\obj\\x64\\Debug\\net8.0-windows10.0.19041.0\\XamlTypeInfo.g.cs",
+            "snippet": "that.ClearColor = (global::Windows.UI.Color)Value;",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "89358"
+            },
+            "line": 888,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "f4bec523-3e70-4488-8530-be8905d12c7e",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "return that.ClearColor;",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\obj\\x64\\Debug\\net8.0-windows10.0.19041.0\\XamlTypeInfo.g.cs",
+            "snippet": "return that.ClearColor;",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "89358"
+            },
+            "line": 883,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "de796dec-2ce0-4637-974c-30b200f8e661",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "session.DrawText(\r\n            \u0022\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u56DE\u8EE2\u3055\u305B\u308B\u0022,\r\n            cx, cy,\r\n            PLACEHOLDER_TEXT,\r\n            textFormat);",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "session.DrawText(\r\n            \u0022\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u56DE\u8EE2\u3055\u305B\u308B\u0022,\r\n            cx, cy,\r\n            PLACEHOLDER_TEXT,\r\n            textFormat);",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 376,
+            "column": 8
+          }
+        },
+        {
+          "incidentId": "b002c46c-2d02-4c88-a6df-b0aa24726739",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "session.DrawCircle(cx, cy, radius, PLACEHOLDER_BORDER, OUTER_STROKE_WIDTH);",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "session.DrawCircle(cx, cy, radius, PLACEHOLDER_BORDER, OUTER_STROKE_WIDTH);",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 367,
+            "column": 8
+          }
+        },
+        {
+          "incidentId": "38f312e1-66ea-4680-bdb8-604ef81671ac",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "session.FillCircle(cx, cy, radius, PLACEHOLDER_FILL);",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "session.FillCircle(cx, cy, radius, PLACEHOLDER_FILL);",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 366,
+            "column": 8
+          }
+        },
+        {
+          "incidentId": "ab0d4e5e-2980-4a99-b5e6-0a3346bee161",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "session.FillGeometry(geometry, INDICATOR_COLOR);",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "session.FillGeometry(geometry, INDICATOR_COLOR);",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 350,
+            "column": 8
+          }
+        },
+        {
+          "incidentId": "2d524e1d-c376-4763-b001-61864531d941",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "session.DrawText(lines[i], textX, lineY, TEXT_COLOR, textFormat);",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "session.DrawText(lines[i], textX, lineY, TEXT_COLOR, textFormat);",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 266,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "a642ca7e-ec8b-40b5-ba0f-c37a266dd947",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "private static void DrawSector(\r\n        CanvasDrawingSession session,\r\n        float cx,\r\n        float cy,\r\n        float radius,\r\n        float startAngle,\r\n        float sweepAngle,\r\n        Windows.UI.Color color)",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "private static void DrawSector(\r\n        CanvasDrawingSession session,\r\n        float cx,\r\n        float cy,\r\n        float radius,\r\n        float startAngle,\r\n        float sweepAngle,\r\n        Windows.UI.Color color)",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 186,
+            "column": 4
+          }
+        },
+        {
+          "incidentId": "4dbe5d38-9886-4248-b411-051e4194adad",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "session.DrawGeometry(geometry, BORDER_COLOR, BORDER_STROKE_WIDTH);",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "session.DrawGeometry(geometry, BORDER_COLOR, BORDER_STROKE_WIDTH);",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 211,
+            "column": 8
+          }
+        },
+        {
+          "incidentId": "4a637223-3dc7-4ef4-b268-6a033ed20f82",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "session.DrawCircle(cx, cy, radius, BORDER_COLOR, OUTER_STROKE_WIDTH);",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "session.DrawCircle(cx, cy, radius, BORDER_COLOR, OUTER_STROKE_WIDTH);",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 166,
+            "column": 8
+          }
+        },
+        {
+          "incidentId": "49f389c6-2902-415c-96e0-fc3c988df732",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "session.FillCircle(\r\n            cx, cy, radius * CENTER_CIRCLE_RATIO, CENTER_CIRCLE_COLOR);",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "session.FillCircle(\r\n            cx, cy, radius * CENTER_CIRCLE_RATIO, CENTER_CIRCLE_COLOR);",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 162,
+            "column": 8
+          }
+        },
+        {
+          "incidentId": "061bd264-eb48-455b-92a8-8c32acfa3b41",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "CENTER_CIRCLE_COLOR =\r\n        Windows.UI.Color.FromArgb(255, 60, 60, 60)",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "CENTER_CIRCLE_COLOR =\r\n        Windows.UI.Color.FromArgb(255, 60, 60, 60)",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 95,
+            "column": 45
+          }
+        },
+        {
+          "incidentId": "5fb77519-e3da-4166-b485-b9bc81bc651a",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "PLACEHOLDER_TEXT =\r\n        Windows.UI.Color.FromArgb(255, 80, 80, 80)",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "PLACEHOLDER_TEXT =\r\n        Windows.UI.Color.FromArgb(255, 80, 80, 80)",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 92,
+            "column": 45
+          }
+        },
+        {
+          "incidentId": "2b9726f8-81f7-4c2d-baf1-2779226a6762",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "PLACEHOLDER_BORDER =\r\n        Windows.UI.Color.FromArgb(255, 120, 120, 120)",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "PLACEHOLDER_BORDER =\r\n        Windows.UI.Color.FromArgb(255, 120, 120, 120)",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 89,
+            "column": 45
+          }
+        },
+        {
+          "incidentId": "69ce4d62-afca-4241-a79f-99b4d61bf7b5",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "PLACEHOLDER_FILL =\r\n        Windows.UI.Color.FromArgb(255, 200, 200, 200)",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "PLACEHOLDER_FILL =\r\n        Windows.UI.Color.FromArgb(255, 200, 200, 200)",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 86,
+            "column": 45
+          }
+        },
+        {
+          "incidentId": "664dcd82-758a-4783-abc6-902edf8fd5dd",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "TEXT_COLOR =\r\n        Windows.UI.Color.FromArgb(255, 20, 20, 20)",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "TEXT_COLOR =\r\n        Windows.UI.Color.FromArgb(255, 20, 20, 20)",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 83,
+            "column": 45
+          }
+        },
+        {
+          "incidentId": "c5520583-5925-434b-bf42-895540d999c8",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "BORDER_COLOR =\r\n        Windows.UI.Color.FromArgb(255, 80, 80, 80)",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "BORDER_COLOR =\r\n        Windows.UI.Color.FromArgb(255, 80, 80, 80)",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 80,
+            "column": 45
+          }
+        },
+        {
+          "incidentId": "b9f16571-d26b-4914-b6d9-0f5adb2b15d2",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "INDICATOR_COLOR =\r\n        Windows.UI.Color.FromArgb(255, 220, 30, 30)",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\Views\\RouletteRenderer.cs",
+            "snippet": "INDICATOR_COLOR =\r\n        Windows.UI.Color.FromArgb(255, 220, 30, 30)",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "14611"
+            },
+            "line": 30,
+            "column": 45
+          }
+        },
+        {
+          "incidentId": "8d8a003e-c962-4793-ac76-3f8b0b07e0de",
+          "ruleId": "Api.0003",
+          "description": "Breaking change: URI length limits removed ",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "global::System.Uri resourceLocator = new global::System.Uri(\u0022ms-appx:///App.xaml\u0022);",
+              "protected": "T:System.Uri"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\obj\\x64\\Debug\\net8.0-windows10.0.19041.0\\App.g.i.cs",
+            "snippet": "global::System.Uri resourceLocator = new global::System.Uri(\u0022ms-appx:///App.xaml\u0022);",
+            "protectedSnippet": "T:System.Uri",
+            "label": "T:System.Uri",
+            "properties": {
+              "CharCount": "3127"
+            },
+            "links": [
+              {
+                "title": "API \u30C9\u30AD\u30E5\u30E1\u30F3\u30C8",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/networking/10.0/uri-length-limits-removed.md",
+                "isCustom": false
+              }
+            ],
+            "line": 50,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "a35910a4-5b79-4922-aa1c-c9701ba2d741",
+          "ruleId": "Api.0003",
+          "description": "Breaking change: URI length limits removed ",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "global::System.Uri resourceLocator = new global::System.Uri(\u0022ms-appx:///App.xaml\u0022);",
+              "protected": "M:System.Uri.#ctor(System.String)"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\obj\\x64\\Debug\\net8.0-windows10.0.19041.0\\App.g.i.cs",
+            "snippet": "global::System.Uri resourceLocator = new global::System.Uri(\u0022ms-appx:///App.xaml\u0022);",
+            "protectedSnippet": "M:System.Uri.#ctor(System.String)",
+            "label": "M:System.Uri.#ctor(System.String)",
+            "properties": {
+              "CharCount": "3127"
+            },
+            "links": [
+              {
+                "title": "API \u30C9\u30AD\u30E5\u30E1\u30F3\u30C8",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/networking/10.0/uri-length-limits-removed.md",
+                "isCustom": false
+              }
+            ],
+            "line": 50,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "03968282-8ba8-45e4-92a2-c9425fb8aec7",
+          "ruleId": "Api.0003",
+          "description": "Breaking change: URI length limits removed ",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "global::System.Uri resourceLocator = new global::System.Uri(\u0022ms-appx:///MainWindow.xaml\u0022);",
+              "protected": "T:System.Uri"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\obj\\x64\\Debug\\net8.0-windows10.0.19041.0\\MainWindow.g.i.cs",
+            "snippet": "global::System.Uri resourceLocator = new global::System.Uri(\u0022ms-appx:///MainWindow.xaml\u0022);",
+            "protectedSnippet": "T:System.Uri",
+            "label": "T:System.Uri",
+            "properties": {
+              "CharCount": "5104"
+            },
+            "links": [
+              {
+                "title": "API \u30C9\u30AD\u30E5\u30E1\u30F3\u30C8",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/networking/10.0/uri-length-limits-removed.md",
+                "isCustom": false
+              }
+            ],
+            "line": 57,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "60da9e21-c3f1-4dd3-a9be-a70a32e73d27",
+          "ruleId": "Api.0003",
+          "description": "Breaking change: URI length limits removed ",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "global::System.Uri resourceLocator = new global::System.Uri(\u0022ms-appx:///MainWindow.xaml\u0022);",
+              "protected": "M:System.Uri.#ctor(System.String)"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\obj\\x64\\Debug\\net8.0-windows10.0.19041.0\\MainWindow.g.i.cs",
+            "snippet": "global::System.Uri resourceLocator = new global::System.Uri(\u0022ms-appx:///MainWindow.xaml\u0022);",
+            "protectedSnippet": "M:System.Uri.#ctor(System.String)",
+            "label": "M:System.Uri.#ctor(System.String)",
+            "properties": {
+              "CharCount": "5104"
+            },
+            "links": [
+              {
+                "title": "API \u30C9\u30AD\u30E5\u30E1\u30F3\u30C8",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/networking/10.0/uri-length-limits-removed.md",
+                "isCustom": false
+              }
+            ],
+            "line": 57,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "99c437d2-c68e-4214-9e90-027d910e6838",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 578,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "9dca2a7c-ab50-43c4-ae85-5b4a75d75ff5",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 578,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "2d1c671c-900f-484f-a38b-f7a1c4a8a69b",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+              "protected": "M:Windows.UI.Color.FromArgb(System.Byte,System.Byte,System.Byte,System.Byte)"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+            "protectedSnippet": "M:Windows.UI.Color.FromArgb(System.Byte,System.Byte,System.Byte,System.Byte)",
+            "label": "M:Windows.UI.Color.FromArgb(System.Byte,System.Byte,System.Byte,System.Byte)",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 578,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "1a0674b5-7f62-4f3f-a11b-c6979227cc4d",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 578,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "7fe61950-5a32-4d73-942d-6699ba17d6fe",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 578,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "9ed9a86e-53b5-42f4-9a63-f28249b1a24d",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+              "protected": "M:Windows.UI.Color.FromArgb(System.Byte,System.Byte,System.Byte,System.Byte)"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "var button = new Button\r\n            {\r\n                Content = \u0022OK\u0022,\r\n                Width = 120,\r\n                Height = 44,\r\n                HorizontalAlignment = HorizontalAlignment.Center,\r\n                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 0, 120, 212)), // WinUI \u9752\u8272 (#0078D4)\r\n                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(\r\n                    Windows.UI.Color.FromArgb(255, 255, 255, 255)), // \u767D\u8272\r\n                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,\r\n                FontSize = 14,\r\n            };",
+            "protectedSnippet": "M:Windows.UI.Color.FromArgb(System.Byte,System.Byte,System.Byte,System.Byte)",
+            "label": "M:Windows.UI.Color.FromArgb(System.Byte,System.Byte,System.Byte,System.Byte)",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 578,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "89272af9-a72e-4db5-a38b-d6161179ef09",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var dy = tapPoint.Y - cy;",
+              "protected": "P:Windows.Foundation.Point.Y"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "var dy = tapPoint.Y - cy;",
+            "protectedSnippet": "P:Windows.Foundation.Point.Y",
+            "label": "P:Windows.Foundation.Point.Y",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 452,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "23e79343-14b4-4ccd-ad9d-49d521e80157",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var dx = tapPoint.X - cx;",
+              "protected": "P:Windows.Foundation.Point.X"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "var dx = tapPoint.X - cx;",
+            "protectedSnippet": "P:Windows.Foundation.Point.X",
+            "label": "P:Windows.Foundation.Point.X",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 451,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "60d81049-2036-4ddd-8ccf-5c2158cb9647",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "var tapPoint = e.GetPosition(sender as UIElement);",
+              "protected": "T:Windows.Foundation.Point"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "var tapPoint = e.GetPosition(sender as UIElement);",
+            "protectedSnippet": "T:Windows.Foundation.Point",
+            "label": "T:Windows.Foundation.Point",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 444,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "b5daca43-0290-453a-93a6-eb5f90ef1f60",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "GroupNameUnsavedBorder.BorderBrush = new SolidColorBrush(Colors.Transparent);",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "GroupNameUnsavedBorder.BorderBrush = new SolidColorBrush(Colors.Transparent);",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 202,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "7f997ae2-41d3-41b6-ba6b-4e813f565bc3",
+          "ruleId": "Api.0002",
+          "description": "API is available in package System.Runtime.WindowsRuntime, 4.7.0. Add package reference to System.Runtime.WindowsRuntime, 4.7.0",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "GroupNameUnsavedBorder.BorderBrush = new SolidColorBrush(Colors.DarkOrange);",
+              "protected": "T:Windows.UI.Color"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "GroupNameUnsavedBorder.BorderBrush = new SolidColorBrush(Colors.DarkOrange);",
+            "protectedSnippet": "T:Windows.UI.Color",
+            "label": "T:Windows.UI.Color",
+            "properties": {
+              "PackageId": "System.Runtime.WindowsRuntime",
+              "PackageNewVersion": "4.7.0",
+              "CharCount": "30303"
+            },
+            "line": 197,
+            "column": 16
+          }
+        },
+        {
+          "incidentId": "5fdda8b3-b8fd-4bc5-a48c-ce4c1730b9ab",
+          "ruleId": "Api.0002",
+          "description": "Breaking change: New TimeSpan.From*() overloads that take integers ",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "_spinTimer = new DispatcherTimer\r\n            {\r\n                Interval = System.TimeSpan.FromMilliseconds(TIMER_INTERVAL_MS),\r\n            };",
+              "protected": "M:System.TimeSpan.FromMilliseconds(System.Double)"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "_spinTimer = new DispatcherTimer\r\n            {\r\n                Interval = System.TimeSpan.FromMilliseconds(TIMER_INTERVAL_MS),\r\n            };",
+            "protectedSnippet": "M:System.TimeSpan.FromMilliseconds(System.Double)",
+            "label": "M:System.TimeSpan.FromMilliseconds(System.Double)",
+            "properties": {
+              "CharCount": "30303"
+            },
+            "links": [
+              {
+                "title": "API \u30C9\u30AD\u30E5\u30E1\u30F3\u30C8",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/core-libraries/9.0/timespan-from-overloads.md",
+                "isCustom": false
+              }
+            ],
+            "line": 116,
+            "column": 12
+          }
+        },
+        {
+          "incidentId": "d4ff0259-8064-416b-944a-7f19c9672c76",
+          "ruleId": "Api.0002",
+          "description": "Breaking change: New TimeSpan.From*() overloads that take integers ",
+          "projectPath": "AppRoulette\\AppRoulette\\AppRoulette.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "_spinTimer = new DispatcherTimer\r\n            {\r\n                Interval = System.TimeSpan.FromMilliseconds(TIMER_INTERVAL_MS),\r\n            };",
+              "protected": "M:System.TimeSpan.FromMilliseconds(System.Double)"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette\\MainWindow.xaml.cs",
+            "snippet": "_spinTimer = new DispatcherTimer\r\n            {\r\n                Interval = System.TimeSpan.FromMilliseconds(TIMER_INTERVAL_MS),\r\n            };",
+            "protectedSnippet": "M:System.TimeSpan.FromMilliseconds(System.Double)",
+            "label": "M:System.TimeSpan.FromMilliseconds(System.Double)",
+            "properties": {
+              "CharCount": "30303"
+            },
+            "links": [
+              {
+                "title": "API \u30C9\u30AD\u30E5\u30E1\u30F3\u30C8",
+                "url": "https://github.com/dotnet/docs/blob/main/docs/core/compatibility/core-libraries/9.0/timespan-from-overloads.md",
+                "isCustom": false
+              }
+            ],
+            "line": 116,
+            "column": 12
+          }
+        }
+      ],
+      "features": []
+    },
+    {
+      "path": "AppRoulette\\AppRoulette.Tests\\AppRoulette.Tests.csproj",
+      "startingProject": true,
+      "issues": 2,
+      "storyPoints": 2,
+      "properties": {
+        "appName": "AppRoulette.Tests",
+        "projectKind": "WinUI",
+        "frameworks": [
+          "net8.0-windows10.0.19041.0"
+        ],
+        "languages": [
+          "C#"
+        ],
+        "tools": [
+          "MSBuild"
+        ],
+        "isSdkStyle": true,
+        "numberOfFiles": 15,
+        "numberOfCodeFiles": 13,
+        "linesTotal": 5045,
+        "linesOfCode": 2413,
+        "totalApiScanned": 2537,
+        "minLinesOfCodeToChange": 0,
+        "maxLinesOfCodeToChange": 0
+      },
+      "ruleInstances": [
+        {
+          "incidentId": "126ff7ca-f603-4272-8137-426f249bacdb",
+          "ruleId": "NuGet.0005",
+          "projectPath": "AppRoulette\\AppRoulette.Tests\\AppRoulette.Tests.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "xunit, 2.9.3\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3",
+              "protected": "xunit, 2.9.3\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette.Tests\\AppRoulette.Tests.csproj",
+            "snippet": "xunit, 2.9.3\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3",
+            "protectedSnippet": "xunit, 2.9.3\n\n\u30EC\u30B3\u30E1\u30F3\u30C7\u30FC\u30B7\u30E7\u30F3\uFF1A\n\nThis package will only be updated for security issues. All future feature work has moved onto v3.\n\nGuide for migrating from xUnit.net v2 to v3: https://xunit.net/docs/getting-started/v3/migration\nRemove xunit, and replace with new package xunit, 2.9.3",
+            "label": "xunit 2.9.3",
+            "properties": {
+              "PackageId": "xunit",
+              "PackageVersion": "2.9.3",
+              "PackageNewVersion": null,
+              "PackageReplacements": null
+            }
+          }
+        },
+        {
+          "incidentId": "edfb1579-a320-4c3e-8943-d2c4c6ed9adc",
+          "ruleId": "Project.0002",
+          "projectPath": "AppRoulette\\AppRoulette.Tests\\AppRoulette.Tests.csproj",
+          "state": "Active",
+          "location": {
+            "snippetModel": {
+              "unrestricted": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net8.0-windows10.0.19041.0\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.22000.0",
+              "protected": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net8.0-windows10.0.19041.0\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.22000.0"
+            },
+            "kind": "File",
+            "path": "AppRoulette\\AppRoulette.Tests\\AppRoulette.Tests.csproj",
+            "snippet": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net8.0-windows10.0.19041.0\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.22000.0",
+            "protectedSnippet": "\u73FE\u5728\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net8.0-windows10.0.19041.0\n\u63A8\u5968\u3055\u308C\u308B\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF: net10.0-windows10.0.22000.0",
+            "properties": {
+              "CurrentTargetFramework": "net8.0-windows10.0.19041.0",
+              "RecommendedTargetFramework": "net10.0-windows10.0.22000.0"
+            }
+          }
+        }
+      ],
+      "features": []
+    }
+  ],
+  "rules": {
+    "NuGet.0002": {
+      "id": "NuGet.0002",
+      "isFeature": false,
+      "description": "\u9078\u629E\u3057\u305F\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF\u306B\u306F\u3001NuGet \u30D1\u30C3\u30B1\u30FC\u30B8\u306E\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9\u3092\u304A\u52E7\u3081\u3057\u307E\u3059\u3002\n\n\u6A19\u6E96\u306E .NET \u30D1\u30C3\u30B1\u30FC\u30B8\u3067\u306F\u3001\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8\u306E\u5BFE\u8C61\u3068\u306A\u308B .NET \u306E\u30D0\u30FC\u30B8\u30E7\u30F3\u3068\u4E00\u81F4\u3059\u308B\u30D0\u30FC\u30B8\u30E7\u30F3\u3092\u304A\u52E7\u3081\u3057\u307E\u3059\u3002\n\n\u4ED6\u306E\u3044\u304F\u3064\u304B\u306E\u30D1\u30C3\u30B1\u30FC\u30B8\u3082\u3001\u9078\u629E\u3057\u305F\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF\u306B\u9069\u3057\u3066\u3044\u307E\u3059\u3002",
+      "label": "NuGet \u30D1\u30C3\u30B1\u30FC\u30B8\u306E\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9\u3092\u304A\u3059\u3059\u3081\u3057\u307E\u3059",
+      "severity": "Potential",
+      "effort": 1,
+      "links": [
+        {
+          "url": "https://go.microsoft.com/fwlink/?linkid=2262530",
+          "isCustom": false
+        }
+      ]
+    },
+    "NuGet.0001": {
+      "id": "NuGet.0001",
+      "isFeature": false,
+      "description": "NuGet \u30D1\u30C3\u30B1\u30FC\u30B8\u306F\u3001\u9078\u629E\u3057\u305F\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF\u3068\u4E92\u63DB\u6027\u304C\u3042\u308A\u307E\u305B\u3093\u3002\n\n\u30D1\u30C3\u30B1\u30FC\u30B8\u306F\u3001\u9078\u629E\u3057\u305F\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8 \u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF\u3092\u30B5\u30DD\u30FC\u30C8\u3059\u308B\u30D0\u30FC\u30B8\u30E7\u30F3\u306B\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9\u3059\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059\u3002\u65B0\u3057\u3044\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF\u3092\u30B5\u30DD\u30FC\u30C8\u3059\u308B\u65B0\u3057\u3044\u30D1\u30C3\u30B1\u30FC\u30B8 \u30D0\u30FC\u30B8\u30E7\u30F3\u304C\u306A\u3044\u5834\u5408\u306F\u3001\u7570\u306A\u308B\u30D1\u30C3\u30B1\u30FC\u30B8\u3092\u4F7F\u7528\u3059\u308B\u5FC5\u8981\u304C\u3042\u308A\u3001\u3059\u3079\u3066\u306E\u30B3\u30FC\u30C9\u3092\u65B0\u3057\u3044 API \u306B\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9\u3059\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059\u3002",
+      "label": "NuGet \u30D1\u30C3\u30B1\u30FC\u30B8\u306B\u4E92\u63DB\u6027\u304C\u3042\u308A\u307E\u305B\u3093",
+      "severity": "Mandatory",
+      "effort": 1,
+      "links": [
+        {
+          "url": "https://go.microsoft.com/fwlink/?linkid=2262529",
+          "isCustom": false
+        }
+      ]
+    },
+    "Project.0002": {
+      "id": "Project.0002",
+      "isFeature": false,
+      "description": "\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF\u306F\u3001\u3053\u306E\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9\u7528\u306B\u9078\u629E\u3057\u305F\u65B0\u3057\u3044\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF\u306B\u5909\u66F4\u3059\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059\u3002\n\n\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9\u4E2D\u3001\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF\u306F\u3001\u8A72\u5F53\u3059\u308B\u5834\u5408\u3001\u5BFE\u5FDC\u3059\u308B\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u306B\u8ABF\u6574\u3055\u308C\u307E\u3059\u3002\u5834\u5408\u306B\u3088\u3063\u3066\u306F\u3001\u6700\u65B0\u306E .NET \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF (Windows\u3001iOS\u3001Android \u306A\u3069) \u3067\u72EC\u81EA\u306E\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u3092\u6301\u3064\u3088\u3046\u306B\u306A\u3063\u305F\u6A5F\u80FD\u3092\u4F7F\u7528\u3057\u3066\u3044\u305F\u5834\u5408\u3001\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9\u5F8C\u306B\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8\u3067\u8907\u6570\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF\u304C\u767A\u751F\u3059\u308B\u5834\u5408\u304C\u3042\u308A\u307E\u3059\u3002",
+      "label": "\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8\u306E\u30BF\u30FC\u30B2\u30C3\u30C8 \u30D5\u30EC\u30FC\u30E0\u30EF\u30FC\u30AF\u3092\u5909\u66F4\u3059\u308B\u5FC5\u8981\u304C\u3042\u308B",
+      "severity": "Mandatory",
+      "effort": 1,
+      "links": [
+        {
+          "title": ".NET Framework\u304B\u3089 .NET \u3078\u306E\u79FB\u690D\u306E\u6982\u8981",
+          "url": "https://go.microsoft.com/fwlink/?linkid=2265227",
+          "isCustom": false
+        },
+        {
+          "title": ".NET \u30D7\u30ED\u30B8\u30A7\u30AF\u30C8 SDK",
+          "url": "https://go.microsoft.com/fwlink/?linkid=2265226",
+          "isCustom": false
+        }
+      ]
+    },
+    "Api.0002": {
+      "id": "Api.0002",
+      "isFeature": false,
+      "description": "\u9078\u629E\u3057\u305F .NET \u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306F API \u306E\u30BD\u30FC\u30B9\u306B\u4E92\u63DB\u6027\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u53E4\u3044 API \u3092\u524A\u9664\u3057\u305F\u308A\u30E1\u30BD\u30C3\u30C9 \u30B7\u30B0\u30CD\u30C1\u30E3\u3092\u5909\u66F4\u3057\u305F\u308A\u3059\u308B\u306A\u3069\u3001\u65B0\u3057\u3044\u30D0\u30FC\u30B8\u30E7\u30F3\u3092\u30BF\u30FC\u30B2\u30C3\u30C8\u306B\u3059\u308B\u5834\u5408\u306F\u3001\u6B63\u5E38\u306B\u30B3\u30F3\u30D1\u30A4\u30EB\u3059\u308B\u305F\u3081\u306B\u30B3\u30FC\u30C9\u306E\u5909\u66F4\u304C\u5FC5\u8981\u306B\u306A\u308A\u307E\u3059\u3002",
+      "label": "\u9078\u629E\u3057\u305F .NET \u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306F\u30BD\u30FC\u30B9\u306B\u4E92\u63DB\u6027\u304C\u3042\u308A\u307E\u305B\u3093",
+      "severity": "Potential",
+      "effort": 1,
+      "links": [
+        {
+          "title": ".NET \u306E\u7834\u58CA\u7684\u5909\u66F4",
+          "url": "https://go.microsoft.com/fwlink/?linkid=2262679",
+          "isCustom": false
+        }
+      ]
+    },
+    "Api.0003": {
+      "id": "Api.0003",
+      "isFeature": false,
+      "description": "\u9078\u629E\u3057\u305F .NET \u30D0\u30FC\u30B8\u30E7\u30F3\u3067 API \u306E\u52D5\u4F5C\u304C\u5909\u66F4\u3055\u308C\u3066\u3044\u307E\u3059\u3002\u518D\u30B3\u30F3\u30D1\u30A4\u30EB\u3092\u5FC5\u8981\u3068\u305B\u305A\u306B\u30B3\u30FC\u30C9\u3068\u30D0\u30A4\u30CA\u30EA\u306E\u52D5\u4F5C\u304C\u5B9F\u884C\u6642\u306B\u7570\u306A\u308B\u5834\u5408\u304C\u3042\u308A\u307E\u3059\u304C\u3001\u65B0\u3057\u3044\u52D5\u4F5C\u304C\u671B\u307E\u3057\u304F\u306A\u304F\u3001\u66F4\u65B0\u304C\u5FC5\u8981\u306B\u306A\u308B\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\u3059\u3002",
+      "label": "\u9078\u629E\u3057\u305F .NET \u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u306E\u52D5\u4F5C\u306E\u5909\u66F4",
+      "severity": "Potential",
+      "effort": 1
+    },
+    "NuGet.0005": {
+      "id": "NuGet.0005",
+      "isFeature": false,
+      "description": "NuGet \u30D1\u30C3\u30B1\u30FC\u30B8\u306F\u975E\u63A8\u5968\u3067\u3059\u3002\n\n\u305D\u306E\u30C9\u30AD\u30E5\u30E1\u30F3\u30C8\u306B\u30A2\u30AF\u30BB\u30B9\u3057\u3001\u3053\u306E\u30D1\u30C3\u30B1\u30FC\u30B8\u306B\u3088\u3063\u3066\u63D0\u4F9B\u3055\u308C\u308B\u6A5F\u80FD\u306E\u7F6E\u304D\u63DB\u3048\u306B\u95A2\u3059\u308B\u30AC\u30A4\u30C0\u30F3\u30B9\u304C\u3042\u308B\u304B\u3069\u3046\u304B\u3092\u78BA\u8A8D\u3057\u307E\u3059\u3002",
+      "label": "NuGet \u30D1\u30C3\u30B1\u30FC\u30B8\u306F\u975E\u63A8\u5968\u3067\u3059",
+      "severity": "Optional",
+      "effort": 1,
+      "links": [
+        {
+          "url": "https://go.microsoft.com/fwlink/?linkid=2262531",
+          "isCustom": false
+        }
+      ]
+    }
+  }
+}
