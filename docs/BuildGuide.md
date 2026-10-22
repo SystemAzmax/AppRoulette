@@ -88,6 +88,26 @@ x86 版を作るときは `win-x86` / `x86` に変えます。
 - 署名していないため、ダウンロードした exe を実行すると
   Windows SmartScreen の警告が出ます。
 
+## CI（GitHub Actions）
+
+`.github/workflows/build.yml` で、次のときに Windows 上でビルドとテストを行います。
+
+- `main` と `product*` ブランチへのプッシュ
+- `main` へのプルリクエスト
+- Actions 画面からの手動実行（Run workflow）
+
+| ステップ | 内容 |
+| --- | --- |
+| テスト | `AppRoulette.Tests` をビルドして実行する |
+| exe 版の発行 | `exe-win-x64` プロファイルで発行する（出力先は `-o` で上書き） |
+| アーティファクトの保存 | 発行した exe 版を `AppRoulette-win-x64` として 14 日間保存する |
+
+CI で作った exe 版は、Actions の実行結果のページにある
+**Artifacts** からダウンロードできます。
+
+ストア版のパッケージ（wapproj）は Visual Studio の MSBuild が必要なため、
+CI ではビルドしていません。
+
 ## デバッグ版のデータを exe 版へコピーする
 
 Visual Studio でデバッグ実行したときのデータは、パッケージ専用のフォルダーにあります。

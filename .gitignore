@@ -1,1 +1,10 @@
-/.vs/CopilotSnapshots/E1906BC902960244B7908716F4F6C4CE/3A255570262A074EBDFFC6C59503AD08/B8F662561A6BF54C0C8E3C00450490B6
+# Visual Studio の作業フォルダー
+.vs/
+
+# ビルド出力
+[Bb]in/
+[Oo]bj/
+
+# MSIX パッケージの出力
+AppPackages/
+BundleArtifacts/
