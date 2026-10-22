@@ -27,13 +27,26 @@ public class MainViewModel : ObservableObject
 
     private const string DEFAULT_NEW_ITEM_NAME = "新しいアイテム";
 
+    private const string SYNC_STATUS_READY = "同期待機";
+
+    private const string SYNC_STATUS_SYNCING = "同期中";
+
+    private const string SYNC_STATUS_SYNCED = "同期済み";
+
+    private const string SYNC_STATUS_FAILED = "同期失敗";
+
     private readonly IRandomService _randomService;
     private readonly IItemRepository _itemRepository;
     private readonly IGroupRepository _groupRepository;
-    private readonly IDataPersistenceService _dataPersistence;
+    private readonly IAppSettingsRepository _appSettingsRepository;
+    private readonly ICloudSyncService? _cloudSyncService;
+    private readonly SyncTimestampStore? _syncTimestampStore;
 
     private readonly Dictionary<int, CancellationTokenSource> _saveDebounceTokens =
         new();
+
+    /// <summary>ルーレットアニメーション状態を管理する ViewModel。</summary>
+    private SpinAnimationViewModel _spinAnimationViewModel = new();
 
     /// <summary>直前の <see cref="ItemsText"/> の値（改行増加検出に使用）。</summary>
     private string _previousItemsText = string.Empty;
@@ -67,6 +80,11 @@ public class MainViewModel : ObservableObject
     private bool _isSyncingItemsText;
 
     private bool _isSyncingEditableItems;
+
+    private string _syncStatusText = SYNC_STATUS_READY;
+
+    /// <summary>直近のスピンで当選したアイテム。</summary>
+    private RouletteItem? _lastWinner;
 
     /// <summary>
     /// ComboBox に表示するグループ一覧を取得します。
@@ -190,9 +208,17 @@ public class MainViewModel : ObservableObject
             if (SetProperty(ref _itemCount, value))
             {
                 SpinCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(CanSpinNow));
+                OnPropertyChanged(nameof(ItemCountStatusText));
             }
         }
     }
+
+    /// <summary>
+    /// 現在のアイテム数と最大値を「現在数/最大値」で取得します。
+    /// </summary>
+    public string ItemCountStatusText =>
+        $"{ItemCount}/{RouletteGroup.MAX_ITEM_COUNT}";
 
     /// <summary>
     /// ルーレットが回転中かどうかを取得または設定します。
@@ -206,7 +232,42 @@ public class MainViewModel : ObservableObject
             if (SetProperty(ref _isSpinning, value))
             {
                 SpinCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(CanSpinNow));
             }
+        }
+    }
+
+    /// <summary>
+    /// ルーレットを開始できるかどうかを取得します。
+    /// UI 側のボタン等の活性状態バインディングに使用します。
+    /// </summary>
+    public bool CanSpinNow => SpinCommand.CanExecute(null);
+
+    /// <summary>
+    /// ルーレット盤面・抽選の対象となる有効なアイテム一覧を取得します。
+    /// IsEnabled が false のアイテムは除外されます。
+    /// </summary>
+    public IReadOnlyList<RouletteItem> WheelItems =>
+        SelectedGroup?.Items.Where(item => item.IsEnabled).ToList()
+        ?? (IReadOnlyList<RouletteItem>)Array.Empty<RouletteItem>();
+
+    /// <summary>
+    /// 選択中グループの「当たったら除外」モードを取得または設定します。
+    /// 設定変更時は SQLite に永続化します。
+    /// </summary>
+    public bool IsExcludeOnWinEnabled
+    {
+        get => SelectedGroup?.ExcludeOnWin ?? false;
+        set
+        {
+            if (SelectedGroup is null || SelectedGroup.ExcludeOnWin == value)
+            {
+                return;
+            }
+
+            SelectedGroup.ExcludeOnWin = value;
+            OnPropertyChanged();
+            _ = SaveExcludeOnWinSafelyAsync(SelectedGroup.Id, value);
         }
     }
 
@@ -239,12 +300,20 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 選択中グループ名の入力欄に未保存の変更があるかどうかを取得します。
+    /// 選択中グループが未保存の変更があるかどうかを取得します。
     /// </summary>
     public bool IsGroupNameUnsaved
     {
         get => _isGroupNameUnsaved;
         private set => SetProperty(ref _isGroupNameUnsaved, value);
+    }
+
+    /// <summary>
+    /// ルーレットアニメーション状態を管理する ViewModel を取得します。
+    /// </summary>
+    public SpinAnimationViewModel SpinAnimation
+    {
+        get => _spinAnimationViewModel;
     }
 
     /// <summary>グループデータを読み込み初期状態に設定するコマンド。</summary>
@@ -314,23 +383,48 @@ public class MainViewModel : ObservableObject
     /// <summary>表形式編集 UI のアイテムをシャッフルするコマンド。</summary>
     public IRelayCommand ShuffleItemsCommand { get; }
 
+    /// <summary>全グループを OneDrive フォルダーと手動同期するコマンド。</summary>
+    public IAsyncRelayCommand SyncAllCommand { get; }
+
+    /// <summary>
+    /// 同期機能が利用可能（OneDrive フォルダー検出済み）か
+    /// どうかを取得します。
+    /// </summary>
+    public bool IsSyncAvailable =>
+        _cloudSyncService is not null && _syncTimestampStore is not null;
+
+    /// <summary>
+    /// 同期状態の表示テキストを取得します。
+    /// </summary>
+    public string SyncStatusText
+    {
+        get => _syncStatusText;
+        private set => SetProperty(ref _syncStatusText, value);
+    }
+
     /// <summary>
     /// <see cref="MainViewModel"/> を初期化します。
     /// </summary>
     /// <param name="randomService">ランダム生成サービス。</param>
     /// <param name="itemRepository">SQLite Item リポジトリ。</param>
     /// <param name="groupRepository">SQLite Group リポジトリ。</param>
-    /// <param name="dataPersistence">データ永続化サービス。</param>
+    /// <param name="appSettingsRepository">アプリ設定リポジトリ。</param>
+    /// <param name="cloudSyncService">クラウド同期サービス。null の場合は同期無効。</param>
+    /// <param name="syncTimestampStore">同期タイムスタンプストア。null の場合は同期無効。</param>
     public MainViewModel(
         IRandomService randomService,
         IItemRepository itemRepository,
         IGroupRepository groupRepository,
-        IDataPersistenceService dataPersistence)
+        IAppSettingsRepository appSettingsRepository,
+        ICloudSyncService? cloudSyncService = null,
+        SyncTimestampStore? syncTimestampStore = null)
     {
         _randomService = randomService;
         _itemRepository = itemRepository;
         _groupRepository = groupRepository;
-        _dataPersistence = dataPersistence;
+        _appSettingsRepository = appSettingsRepository;
+        _cloudSyncService = cloudSyncService;
+        _syncTimestampStore = syncTimestampStore;
         InitializeCommand = new AsyncRelayCommand(InitializeAsync);
         SpinCommand = new RelayCommand(Spin, CanSpin);
         ClearItemsCommand = new RelayCommand(ClearItems);
@@ -349,6 +443,9 @@ public class MainViewModel : ObservableObject
         MoveItemRowDownCommand = new RelayCommand(MoveItemRowDown, CanMoveItemRowDown);
         SortItemsCommand = new RelayCommand(SortItems, CanReorderItems);
         ShuffleItemsCommand = new RelayCommand(ShuffleItems, CanReorderItems);
+        SyncAllCommand = new AsyncRelayCommand(
+            SyncAllAsync,
+            () => IsSyncAvailable);
 
         EditableItems.CollectionChanged += EditableItems_CollectionChanged;
     }
@@ -378,6 +475,7 @@ public class MainViewModel : ObservableObject
                 .Select(item => new RouletteItem(item.Label)
                 {
                     Weight = item.Weight,
+                    IsEnabled = item.IsEnabled,
                 })
                 .ToList();
         }
@@ -385,11 +483,157 @@ public class MainViewModel : ObservableObject
         GroupList = new ObservableCollection<RouletteGroup>(groups);
 
         // 前回起動時に選択されたグループを復元
-        var lastSelectedGroupId = await _dataPersistence.GetLastSelectedGroupIdAsync();
+        var lastSelectedGroupId = await _appSettingsRepository.GetLastSelectedGroupIdAsync();
         var selectedGroup = groups.FirstOrDefault(g => g.Id == lastSelectedGroupId) 
             ?? (GroupList.Count > 0 ? GroupList[0] : null);
         SelectedGroup = selectedGroup;
         UpdateGroupCommandStates();
+
+        await DownloadOnStartupAsync();
+    }
+
+    /// <summary>
+    /// 起動時に選択中グループの OneDrive フォルダーのデータを
+    /// ダウンロードして新しければ適用します。
+    /// </summary>
+    private async Task DownloadOnStartupAsync()
+    {
+        if (!IsSyncAvailable)
+        {
+            return;
+        }
+
+        if (SelectedGroup is not null)
+        {
+            await DownloadAndApplyGroupAsync(SelectedGroup.Id);
+        }
+
+        SyncStatusText = SYNC_STATUS_SYNCED;
+    }
+
+    /// <summary>
+    /// 全グループをクラウドと双方向に同期します。
+    /// 各グループについてタイムスタンプの新しい方を採用します。
+    /// </summary>
+    private async Task SyncAllAsync()
+    {
+        if (_cloudSyncService is null || _syncTimestampStore is null)
+        {
+            return;
+        }
+
+        SyncStatusText = SYNC_STATUS_SYNCING;
+
+        try
+        {
+            var remoteGroups = await _cloudSyncService.DownloadAllGroupsAsync();
+            var remoteById = remoteGroups.ToDictionary(g => g.GroupId);
+            var uploadTargets = new List<SyncGroupData>();
+
+            foreach (var group in GroupList)
+            {
+                var localTimestamp =
+                    await _syncTimestampStore.GetAsync(group.Id)
+                    ?? DateTime.MinValue;
+                var local = SyncGroupData.FromGroup(group, localTimestamp);
+                remoteById.TryGetValue(group.Id, out var remote);
+
+                if (SyncConflictResolver.ShouldApplyRemote(local, remote))
+                {
+                    await ApplyRemoteGroupAsync(group, remote!);
+                }
+                else
+                {
+                    uploadTargets.Add(local);
+                }
+            }
+
+            var succeeded =
+                await _cloudSyncService.UploadAllGroupsAsync(uploadTargets);
+            SyncStatusText = succeeded
+                ? SYNC_STATUS_SYNCED
+                : SYNC_STATUS_FAILED;
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = SYNC_STATUS_FAILED;
+            ApplicationLogger.LogError("手動同期", ex);
+        }
+    }
+
+    /// <summary>
+    /// 指定グループのクラウドデータをダウンロードし、
+    /// ローカルより新しい場合のみ適用します。
+    /// </summary>
+    /// <param name="groupId">グループID。</param>
+    private async Task DownloadAndApplyGroupAsync(int groupId)
+    {
+        if (_cloudSyncService is null || _syncTimestampStore is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var remote = await _cloudSyncService.DownloadGroupAsync(groupId);
+            var group = GroupList.FirstOrDefault(g => g.Id == groupId);
+            if (group is null || remote is null)
+            {
+                return;
+            }
+
+            var localTimestamp =
+                await _syncTimestampStore.GetAsync(groupId)
+                ?? DateTime.MinValue;
+            var local = SyncGroupData.FromGroup(group, localTimestamp);
+
+            if (SyncConflictResolver.ShouldApplyRemote(local, remote))
+            {
+                await ApplyRemoteGroupAsync(group, remote);
+            }
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogError("クラウドデータ取得", ex);
+        }
+    }
+
+    /// <summary>
+    /// クラウドのグループデータをローカルグループへ適用し、
+    /// SQLite とタイムスタンプストアに保存します。
+    /// 選択中グループの場合は編集UIも更新します。
+    /// </summary>
+    /// <param name="group">適用先のローカルグループ。</param>
+    /// <param name="remote">適用するクラウドデータ。</param>
+    private async Task ApplyRemoteGroupAsync(
+        RouletteGroup group, SyncGroupData remote)
+    {
+        group.DisplayName = remote.DisplayName;
+        group.ExcludeOnWin = remote.ExcludeOnWin;
+        group.Items = remote.Items
+            .Select(i => new RouletteItem(i.Name)
+            {
+                Weight = i.Weight,
+                IsEnabled = i.IsEnabled,
+            })
+            .Take(RouletteGroup.MAX_ITEM_COUNT)
+            .ToList();
+
+        await _groupRepository.SaveGroupNameAsync(
+            group.Id, remote.DisplayName);
+        await _itemRepository.SaveItemsByGroupAsync(
+            group.Id, group.Items);
+
+        if (_syncTimestampStore is not null)
+        {
+            await _syncTimestampStore.SetAsync(
+                group.Id, remote.LastModifiedUtc);
+        }
+
+        if (ReferenceEquals(group, SelectedGroup))
+        {
+            OnSelectedGroupChanged(group);
+        }
     }
 
     /// <summary>
@@ -398,23 +642,85 @@ public class MainViewModel : ObservableObject
     /// </summary>
     private void Spin()
     {
-        if (SelectedGroup is null || SelectedGroup.Items.Count == 0)
+        var wheelItems = WheelItems;
+        if (wheelItems.Count == 0)
         {
             return;
         }
 
-        var selectedItem = _randomService.SelectByWeight(SelectedGroup.Items);
+        var selectedItem = _randomService.SelectByWeight(wheelItems);
         if (selectedItem is not null)
         {
-            SelectedItemIndex = SelectedGroup.Items.IndexOf(selectedItem);
+            _lastWinner = selectedItem;
+            SelectedItemIndex = wheelItems.ToList().IndexOf(selectedItem);
+        }
+    }
+
+    /// <summary>
+    /// 「当たったら除外」モードが有効な場合、
+    /// 直近の当選アイテムを抽選対象から除外して保存します。
+    /// 有効なアイテムが残り1件の場合は除外しません。
+    /// </summary>
+    public void ExcludeWinnerIfNeeded()
+    {
+        if (SelectedGroup is null
+            || !SelectedGroup.ExcludeOnWin
+            || _lastWinner is null)
+        {
+            return;
+        }
+
+        if (SelectedGroup.Items.Count(item => item.IsEnabled) <= 1)
+        {
+            return;
+        }
+
+        var groupIndex = SelectedGroup.Items.IndexOf(_lastWinner);
+        _lastWinner.IsEnabled = false;
+        _lastWinner = null;
+        SelectedItemIndex = -1;
+
+        if (groupIndex >= 0 && groupIndex < EditableItems.Count)
+        {
+            // 編集UIのクローンにも反映し、保存処理を発火させる
+            EditableItems[groupIndex].IsEnabled = false;
+        }
+        else
+        {
+            ScheduleItemsSave(SelectedGroup);
+        }
+
+        OnPropertyChanged(nameof(WheelItems));
+        SpinCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanSpinNow));
+    }
+
+    /// <summary>
+    /// 「当たったら除外」設定を保存し、失敗時はログに記録します。
+    /// </summary>
+    /// <param name="groupId">保存対象グループの識別子。</param>
+    /// <param name="excludeOnWin">「当たったら除外」の有効状態。</param>
+    private async Task SaveExcludeOnWinSafelyAsync(int groupId, bool excludeOnWin)
+    {
+        try
+        {
+            await _groupRepository.SaveGroupExcludeOnWinAsync(
+                groupId, excludeOnWin);
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogError("当たったら除外設定保存", ex);
         }
     }
 
     /// <summary>
     /// ルーレットを開始できるかどうかを返します。
-    /// アイテムが 1 件以上存在し、かつ回転中でない場合に <c>true</c>。
+    /// 有効なアイテムが 1 件以上存在し、かつ回転中でない場合に <c>true</c>。
     /// </summary>
-    private bool CanSpin() => ItemCount > 0 && !IsSpinning;
+    private bool CanSpin() =>
+        !IsSpinning
+        && SelectedGroup is not null
+        && SelectedGroup.Items.Any(item => item.IsEnabled);
 
     /// <summary>
     /// 選択中グループの表示名を変更して保存します。
@@ -875,6 +1181,9 @@ public class MainViewModel : ObservableObject
         SetItemsTextWithoutParsing(items);
         UpdateItemEditState();
         ScheduleItemsSave(SelectedGroup);
+        OnPropertyChanged(nameof(WheelItems));
+        SpinCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanSpinNow));
     }
 
     /// <summary>
@@ -905,6 +1214,7 @@ public class MainViewModel : ObservableObject
 
         SelectedEditableItem = EditableItems.FirstOrDefault();
         UpdateItemEditState();
+        UpdateCanUncheckedForAllItems();
     }
 
     /// <summary>
@@ -929,8 +1239,8 @@ public class MainViewModel : ObservableObject
 
     /// <summary>
     /// 編集用アイテムコレクションの変更を処理します。
-    /// </summary>
-    private void EditableItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+     /// </summary>
+     private void EditableItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.OldItems is not null)
         {
@@ -952,6 +1262,7 @@ public class MainViewModel : ObservableObject
         if (!_isSyncingEditableItems)
         {
             UpdateItemEditState();
+            UpdateCanUncheckedForAllItems();
         }
     }
 
@@ -959,12 +1270,34 @@ public class MainViewModel : ObservableObject
     /// 表形式編集 UI の行プロパティ変更を処理します。
     /// </summary>
     private void EditableItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (!_isSyncingEditableItems)
-        {
-            ApplyEditableItemsToSelectedGroup();
-        }
-    }
+       {
+           if (_isSyncingEditableItems)
+           {
+               return;
+           }
+
+           if (e.PropertyName == nameof(RouletteItem.IsEnabled))
+           {
+               // 有効状態が変わった場合、すべてのアイテムのCanUncheckedを更新
+               UpdateCanUncheckedForAllItems();
+           }
+
+           ApplyEditableItemsToSelectedGroup();
+       }
+
+       /// <summary>
+       /// すべてのアイテムの「チェック外し可能」フラグを更新します。
+       /// 有効なアイテムが2個以下の場合、有効なアイテムはチェック外し不可になります。
+       /// </summary>
+       private void UpdateCanUncheckedForAllItems()
+       {
+           var enabledCount = EditableItems.Count(item => item.IsEnabled);
+           foreach (var item in EditableItems)
+           {
+               // 有効なアイテムが2個以下で、かつこのアイテムが有効な場合は外せない
+               item.CanUnchecked = !(enabledCount <= 2 && item.IsEnabled);
+           }
+       }
 
     /// <summary>
     /// 新規アイテム行の重複しない既定名を作成します。
@@ -1000,10 +1333,12 @@ public class MainViewModel : ObservableObject
     /// <param name="item">コピー元アイテム。</param>
     /// <returns>コピーされたアイテム。</returns>
     private static RouletteItem CloneItem(RouletteItem item) =>
-        new(item.Name)
-        {
-            Weight = item.Weight,
-        };
+       new(item.Name)
+       {
+           Weight = item.Weight,
+           IsEnabled = item.IsEnabled,
+           CanUnchecked = item.CanUnchecked,
+       };
 
     /// <summary>
     /// 選択中のグループの全アイテムをクリアします。
@@ -1050,6 +1385,9 @@ public class MainViewModel : ObservableObject
         ReplaceEditableItems(items);
         ItemCount = items.Count;
         SelectedItemIndex = -1;
+        OnPropertyChanged(nameof(WheelItems));
+        SpinCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanSpinNow));
 
         if (value != _previousItemsText)
         {
@@ -1133,6 +1471,39 @@ public class MainViewModel : ObservableObject
 
         cancellationToken.ThrowIfCancellationRequested();
         SaveStatusText = SAVE_STATUS_SAVED;
+
+        // Fire-and-forget: クラウドへの自動アップロードは保存完了を
+        // ブロックしない。失敗時はログと状態表示のみ更新する。
+        _ = UploadGroupSafelyAsync(group);
+    }
+
+    /// <summary>
+    /// 同期が利用可能な場合に指定グループを OneDrive フォルダーへ
+    /// アップロードします。失敗してもアプリ動作は継続します。
+    /// </summary>
+    /// <param name="group">アップロードするグループ。</param>
+    private async Task UploadGroupSafelyAsync(RouletteGroup group)
+    {
+        if (_cloudSyncService is null || _syncTimestampStore is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var now = DateTime.UtcNow;
+            await _syncTimestampStore.SetAsync(group.Id, now);
+            var data = SyncGroupData.FromGroup(group, now);
+            var succeeded = await _cloudSyncService.UploadGroupAsync(data);
+            SyncStatusText = succeeded
+                ? SYNC_STATUS_SYNCED
+                : SYNC_STATUS_FAILED;
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = SYNC_STATUS_FAILED;
+            ApplicationLogger.LogError("自動アップロード", ex);
+        }
     }
 
     /// <summary>
@@ -1162,6 +1533,9 @@ public class MainViewModel : ObservableObject
         ItemsText = text;
         ItemCount = value.Items.Count;
         SelectedItemIndex = -1;
+        _lastWinner = null;
+        OnPropertyChanged(nameof(IsExcludeOnWinEnabled));
+        OnPropertyChanged(nameof(WheelItems));
 
         _ = SaveLastSelectedGroupIdSafelyAsync(value.Id);
     }
@@ -1174,7 +1548,7 @@ public class MainViewModel : ObservableObject
     {
         try
         {
-            await _dataPersistence.SaveLastSelectedGroupIdAsync(groupId);
+            await _appSettingsRepository.SaveLastSelectedGroupIdAsync(groupId);
         }
         catch (Exception ex)
         {
@@ -1226,6 +1600,42 @@ public class MainViewModel : ObservableObject
     public static string FormatItems(IEnumerable<RouletteItem> items) =>
         string.Join('\n', items.Select(i => $"{i.Name},{i.Weight}"));
 
+    /// <summary>CSVエクスポート時に付与するヘッダー行。</summary>
+    private const string CSV_HEADER = "アイテム名,Weight";
+
+    /// <summary>
+    /// 選択中グループのアイテム一覧をCSV形式のテキストに変換します。
+    /// 先頭行にはヘッダー（<see cref="CSV_HEADER"/>）を付与します。
+    /// </summary>
+    /// <returns>CSV形式のテキスト。選択中グループがない場合はヘッダーのみを返します。</returns>
+    public string ExportItemsToCsv()
+    {
+        var items = SelectedGroup?.Items ?? new List<RouletteItem>();
+        return CSV_HEADER + "\n" + FormatItems(items);
+    }
+
+    /// <summary>
+    /// CSV形式のテキストを解析し、選択中グループのアイテム一覧に反映します。
+    /// 先頭行が <see cref="CSV_HEADER"/> と一致する場合はヘッダー行として除外します。
+    /// </summary>
+    /// <param name="csvContent">インポートするCSV形式のテキスト。</param>
+    public void ImportItemsFromCsv(string csvContent)
+    {
+        if (SelectedGroup is null || csvContent is null)
+        {
+            return;
+        }
+
+        var normalized = csvContent.Replace("\r\n", "\n").Replace("\r", "\n");
+        var lines = normalized.Split('\n');
+        var startIndex = lines.Length > 0
+            && string.Equals(lines[0].Trim(), CSV_HEADER, StringComparison.OrdinalIgnoreCase)
+            ? 1
+            : 0;
+
+        ItemsText = string.Join('\n', lines.Skip(startIndex));
+    }
+
     /// <summary>
     /// テキストの行数を返します。空文字は 0 を返します。
     /// </summary>
@@ -1235,4 +1645,48 @@ public class MainViewModel : ObservableObject
         string.IsNullOrEmpty(text)
             ? 0
             : text.Split('\n').Length;
+
+    /// <summary>
+    /// 指定されたアイテムのインデックスが、ルーレット上でインジケーター位置に来るような
+    /// ルーレットの回転角度（ラジアン）を計算します。
+    /// </summary>
+    /// <param name="selectedIndex">アイテムのインデックス（0 始まり）。</param>
+    /// <param name="items">アイテムリスト。</param>
+    /// <returns>目標回転角度（ラジアン）。</returns>
+    public static float CalcTargetAngle(
+        int selectedIndex,
+        IReadOnlyList<RouletteItem>? items)
+    {
+        if (items is null || selectedIndex < 0 || selectedIndex >= items.Count)
+        {
+            return 0f;
+        }
+
+        var totalWeight = 0;
+        var precedingWeight = 0;
+        for (var i = 0; i < items.Count; i++)
+        {
+            var weight = Math.Max(0, items[i].Weight);
+            totalWeight += weight;
+
+            if (i < selectedIndex)
+            {
+                precedingWeight += weight;
+            }
+        }
+
+        var selectedWeight = Math.Max(0, items[selectedIndex].Weight);
+        if (totalWeight <= 0 || selectedWeight <= 0)
+        {
+            return 0f;
+        }
+
+        var selectedCenterWeight = precedingWeight + selectedWeight / 2f;
+
+        // Draw では startAngle = rotationAngle - π/2 + 累積Weight角度。
+        // インジケーターは 3時方向（角度 0）なので、選択扇形の中心が
+        // 角度 0 を向くように targetAngle を決定する。
+        return MathF.PI / 2f
+            - MathF.PI * 2f * selectedCenterWeight / totalWeight;
+    }
 }

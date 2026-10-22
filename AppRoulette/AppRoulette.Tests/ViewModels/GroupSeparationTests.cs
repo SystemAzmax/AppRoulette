@@ -17,12 +17,12 @@ public class GroupSeparationTests
     {
         // Arrange
         var fakeRepo = new FakeItemRepository();
-        var fakePersistence = new FakeDataPersistenceService();
+        var fakeSettingsRepository = new FakeAppSettingsRepository();
         var sut = new MainViewModel(
             new FakeRandomService(0),
             fakeRepo,
             new FakeGroupRepository(),
-            fakePersistence);
+            fakeSettingsRepository);
         await sut.InitializeCommand.ExecuteAsync(null);
 
         // Act & Assert

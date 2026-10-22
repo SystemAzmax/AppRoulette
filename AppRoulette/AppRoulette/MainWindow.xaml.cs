@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
 using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using System.Linq;
 
 namespace AppRoulette
@@ -25,30 +26,15 @@ namespace AppRoulette
         /// <summary>1フレームのインターバル（ミリ秒）。約60fps。</summary>
         private const int TIMER_INTERVAL_MS = 16;
 
-        /// <summary>アニメーションの総回転量（ラジアン）の最小値。</summary>
-        private const float MIN_SPIN_RADIANS = MathF.PI * 8f;   // 4周
+        /// <summary>ウィンドウの既定の幅（ピクセル）。</summary>
+        private const int DEFAULT_WINDOW_WIDTH = 1300;
 
-        /// <summary>アニメーションの総回転量（ラジアン）の最大値。</summary>
-        private const float MAX_SPIN_RADIANS = MathF.PI * 14f;  // 7周
-
-        /// <summary>アニメーション総時間（秒）。</summary>
-        private const float SPIN_DURATION_SEC = 3.5f;
+        /// <summary>ウィンドウの既定の高さ（ピクセル）。</summary>
+        private const int DEFAULT_WINDOW_HEIGHT = 850;
 
         // ---------------------------------------------------------------
         // アニメーション状態
         // ---------------------------------------------------------------
-
-        /// <summary>現在の回転角度（ラジアン）。</summary>
-        private float _rotationAngle;
-
-        /// <summary>アニメーション開始時点の回転角度（ラジアン）。</summary>
-        private float _spinStartAngle;
-
-        /// <summary>アニメーションの総回転量（ラジアン）。</summary>
-        private float _spinTotalRadians;
-
-        /// <summary>アニメーション経過時間（秒）。</summary>
-        private float _spinElapsedSec;
 
         /// <summary>フレーム更新用タイマー。</summary>
         private readonly DispatcherTimer _spinTimer;
@@ -66,7 +52,7 @@ namespace AppRoulette
         private bool _isUserInput;
 
         /// <summary>ウィンドウ位置情報を管理するサービス。</summary>
-        private IWindowPositionService _positionService;
+        private IWindowPositionService? _positionService;
 
         // ---------------------------------------------------------------
         // ViewModel
@@ -93,54 +79,30 @@ namespace AppRoulette
                 new RandomService(),
                 new SqliteItemRepository(),
                 new SqliteGroupRepository(),
-                new JsonDataPersistenceService());
+                new SqliteAppSettingsRepository(),
+                new OneDriveFolderSyncService(),
+                new SyncTimestampStore());
 
             ViewModel.PropertyChanged += (_, e) =>
             {
                 try
                 {
-                    // ルーレット再描画：アイテム数またはグループ変更時（ユーザー入力中もルーレットは更新）
+                    // ルーレット再描画：アイテム数、グループ、盤面アイテム変更時
                     if (e.PropertyName is nameof(ViewModel.ItemCount)
-                                       or nameof(ViewModel.SelectedGroup))
+                                       or nameof(ViewModel.SelectedGroup)
+                                       or nameof(ViewModel.WheelItems))
                     {
-                        _rotationAngle = 0f;
-                        // デザイン時は RouletteCanvas が null の可能性がある
                         RouletteCanvas?.Invalidate();
                     }
 
-                    // ItemsText 変更時もルーレットを再描画（テキストの内容は同じでも表示を更新）
+                    // ItemsText 変更時もルーレットを再描画
                     if (e.PropertyName == nameof(ViewModel.ItemsText))
                     {
                         RouletteCanvas?.Invalidate();
+                        UpdateItemsTextBoxFromViewModel();
                     }
 
-                    // SelectedGroup 変更時に ComboBox を同期
-                    if (e.PropertyName == nameof(ViewModel.SelectedGroup))
-                    {
-                        if (GroupComboBox != null)
-                        {
-                            GroupComboBox.SelectedItem = ViewModel.SelectedGroup;
-                        }
-                    }
-
-                    // ItemsText 変更時に TextBox を同期（ユーザー入力中は無視）
-                    // ユーザー入力中は TextBox が既に最新なので更新は不要
-                    if (e.PropertyName == nameof(ViewModel.ItemsText) && !_isUserInput)
-                    {
-                        if (ItemsTextBox != null)
-                        {
-                            _isUpdatingTextBox = true;
-                            try
-                            {
-                                ItemsTextBox.Text = ViewModel.ItemsText.Replace("\n", "\r\n");
-                            }
-                            finally
-                            {
-                                _isUpdatingTextBox = false;
-                            }
-                        }
-                    }
-
+                    // グループ名未保存状態の視覚的フィードバック
                     if (e.PropertyName == nameof(ViewModel.IsGroupNameUnsaved))
                     {
                         UpdateGroupNameUnsavedVisualState();
@@ -160,9 +122,10 @@ namespace AppRoulette
 
             try
             {
-                // ウィンドウサイズを1300×850に設定
+                // ウィンドウサイズを既定値に設定
                 ExtendsContentIntoTitleBar = false;
-                AppWindow.Resize(new Windows.Graphics.SizeInt32(1300, 850));
+                AppWindow.Resize(new Windows.Graphics.SizeInt32(
+                    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT));
                 UpdateGroupNameUnsavedVisualState();
 
                 // ウィンドウ位置情報を読み込んで、保存されているなら適用
@@ -171,14 +134,20 @@ namespace AppRoulette
 
                 if (savedPosition != null)
                 {
-                    // 保存された位置がある場合は、Activated イベント時に適用
-                    Activated += (sender, args) =>
+                    // 保存された位置・サイズがある場合は、初回の Activated イベント時にのみ適用
+                    void OnActivatedForRestore(object sender, WindowActivatedEventArgs args)
                     {
                         if (args.WindowActivationState != WindowActivationState.Deactivated)
                         {
-                            AppWindow.Move(new PointInt32(savedPosition.X, savedPosition.Y));
+                            AppWindow.MoveAndResize(new RectInt32(
+                                savedPosition.X,
+                                savedPosition.Y,
+                                savedPosition.Width,
+                                savedPosition.Height));
+                            Activated -= OnActivatedForRestore;
                         }
-                    };
+                    }
+                    Activated += OnActivatedForRestore;
                 }
 
                 // ウィンドウを閉じる際に位置を保存
@@ -186,6 +155,12 @@ namespace AppRoulette
                 {
                     try
                     {
+                        var positionService = _positionService;
+                        if (positionService is null)
+                        {
+                            return;
+                        }
+
                         var placement = AppWindow.Position;
                         var currentPosition = new WindowPositionInfo
                         {
@@ -194,7 +169,7 @@ namespace AppRoulette
                             Width = AppWindow.Size.Width,
                             Height = AppWindow.Size.Height,
                         };
-                        await _positionService.SaveWindowPositionAsync(currentPosition);
+                        await positionService.SaveWindowPositionAsync(currentPosition);
                     }
                     catch (Exception ex)
                     {
@@ -229,6 +204,74 @@ namespace AppRoulette
             GroupNameUnsavedText.Opacity = 0;
         }
 
+        /// <summary>
+        /// ウィンドウサイズをリセットボタンのクリックイベントを処理します。
+        /// ウィンドウのサイズを既定値（1300×850）に戻します。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnResetWindowSizeButtonClick(
+            object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                AppWindow.Resize(new Windows.Graphics.SizeInt32(
+                    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT));
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("ウィンドウサイズリセット", ex);
+            }
+        }
+
+        /// <summary>
+        /// 「常に最前面表示」トグルボタンのクリックイベントを処理します。
+        /// ウィンドウを常に最前面に表示するかどうかを切り替えます。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnAlwaysOnTopToggleButtonClick(
+            object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (AppWindow.Presenter is OverlappedPresenter presenter)
+                {
+                    presenter.IsAlwaysOnTop = AlwaysOnTopToggleButton.IsChecked == true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("常に最前面表示切り替え", ex);
+            }
+        }
+
+        /// <summary>
+        /// ViewModel のアイテムテキストを下部テキストボックスに反映します。
+        /// </summary>
+        private void UpdateItemsTextBoxFromViewModel()
+        {
+            if (_isUserInput || ItemsTextBox is null)
+            {
+                return;
+            }
+
+            if (ItemsTextBox.Text == ViewModel.ItemsText)
+            {
+                return;
+            }
+
+            _isUpdatingTextBox = true;
+            try
+            {
+                ItemsTextBox.Text = ViewModel.ItemsText;
+            }
+            finally
+            {
+                _isUpdatingTextBox = false;
+            }
+        }
+
         // ---------------------------------------------------------------
         // 初期化
         // ---------------------------------------------------------------
@@ -241,6 +284,66 @@ namespace AppRoulette
         private async void OnRootGridLoaded(object sender, RoutedEventArgs e)
         {
             await ViewModel.InitializeCommand.ExecuteAsync(null);
+            UpdateItemViewTabVisualState(isDetailSelected: true);
+        }
+
+        // ---------------------------------------------------------------
+        // リスト項目タブ（詳細 / テキスト）切り替え
+        // ---------------------------------------------------------------
+
+        /// <summary>
+        /// 「詳細」タブボタンのクリックイベントハンドラー。
+        /// 詳細表パネルを表示し、テキストパネルを非表示にします。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnDetailTabButtonClick(object sender, RoutedEventArgs e)
+        {
+            UpdateItemViewTabVisualState(isDetailSelected: true);
+        }
+
+        /// <summary>
+        /// 「テキスト」タブボタンのクリックイベントハンドラー。
+        /// テキストパネルを表示し、詳細表パネルを非表示にします。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnTextTabButtonClick(object sender, RoutedEventArgs e)
+        {
+            UpdateItemViewTabVisualState(isDetailSelected: false);
+        }
+
+        /// <summary>
+        /// リスト項目タブの表示状態（パネルの表示切り替え・ボタンの選択状態）を更新します。
+        /// </summary>
+        /// <param name="isDetailSelected">「詳細」タブを選択状態にする場合は <c>true</c>。</param>
+        private void UpdateItemViewTabVisualState(bool isDetailSelected)
+        {
+            if (DetailTabPanel is null || TextTabPanel is null
+                || DetailTabButton is null || TextTabButton is null)
+            {
+                return;
+            }
+
+            DetailTabPanel.Visibility = isDetailSelected
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            TextTabPanel.Visibility = isDetailSelected
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+
+            var selectedBrush = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+            var unselectedBrush = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+
+            DetailTabButton.Foreground = isDetailSelected ? selectedBrush : unselectedBrush;
+            DetailTabButton.FontWeight = isDetailSelected
+                ? Microsoft.UI.Text.FontWeights.SemiBold
+                : Microsoft.UI.Text.FontWeights.Normal;
+
+            TextTabButton.Foreground = isDetailSelected ? unselectedBrush : selectedBrush;
+            TextTabButton.FontWeight = isDetailSelected
+                ? Microsoft.UI.Text.FontWeights.Normal
+                : Microsoft.UI.Text.FontWeights.SemiBold;
         }
 
         // ---------------------------------------------------------------
@@ -280,15 +383,13 @@ namespace AppRoulette
             var cy = (float)(sender.ActualHeight / 2);
             var radius = size / 2f * RouletteRenderer.RADIUS_RATIO;
 
-            var items = (IReadOnlyList<AppRoulette.Models.RouletteItem>?)
-                        ViewModel.SelectedGroup?.Items
-                        ?? System.Array.Empty<AppRoulette.Models.RouletteItem>();
+            var items = ViewModel.WheelItems;
 
             RouletteRenderer.Draw(
                 args.DrawingSession,
                 cx, cy, radius,
                 items,
-                _rotationAngle);
+                ViewModel.SpinAnimation.RotationAngle);
         }
 
         // ---------------------------------------------------------------
@@ -297,17 +398,24 @@ namespace AppRoulette
 
         /// <summary>
         /// ルーレットキャンバスのタップイベントハンドラー。
+        /// <summary>
+        /// スタートボタンのクリックイベントを処理します。
+        /// 円盤タップ時と同じ共通処理（結果決定・アニメーション開始）を実行します。
+        /// </summary>
+        /// <param name="sender">クリックされたボタン。</param>
+        /// <param name="e">クリックイベント引数。</param>
+        private void OnStartButtonClick(object sender, RoutedEventArgs e)
+        {
+            TryStartSpin();
+        }
+
+        /// <summary>
         /// ルーレット円内をタップし、かつアイテムが存在し回転中でない場合にアニメーションを開始します。
         /// </summary>
         /// <param name="sender">タップされたキャンバス。</param>
         /// <param name="e">タップイベント引数。</param>
         private void RouletteCanvas_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            if (!ViewModel.SpinCommand.CanExecute(null))
-            {
-                return;
-            }
-
             // タップ位置を取得
             var tapPoint = e.GetPosition(sender as UIElement);
             var cx = RouletteCanvas.ActualWidth / 2;
@@ -326,6 +434,20 @@ namespace AppRoulette
                 return;
             }
 
+            TryStartSpin();
+        }
+
+        /// <summary>
+        /// ルーレットを開始できる場合に、ランダムな出目を決定してアニメーションを開始します。
+        /// 円盤タップとスタートボタンの共通処理です。
+        /// </summary>
+        private void TryStartSpin()
+        {
+            if (!ViewModel.SpinCommand.CanExecute(null))
+            {
+                return;
+            }
+
             // ランダムな出目を ViewModel に決定させる
             ViewModel.SpinCommand.Execute(null);
 
@@ -335,32 +457,34 @@ namespace AppRoulette
         /// <summary>
         /// アニメーション状態を初期化してタイマーを開始します。
         /// </summary>
+
         private void StartSpinAnimation()
         {
             ViewModel.IsSpinning = true;
 
-            _spinStartAngle = _rotationAngle;
-            _spinElapsedSec = 0f;
+            var spinAnimation = ViewModel.SpinAnimation;
+            spinAnimation.SpinStartAngle = spinAnimation.RotationAngle;
+            spinAnimation.SpinElapsedSec = 0f;
 
-            // 目的アングル：選択されたアイテムがインジケーター位置に来るように調整
-            var targetAngle = CalcTargetAngle(
+            // 目的角度：選択されたアイテムがインジケーター位置に来るように調整
+            var targetAngle = MainViewModel.CalcTargetAngle(
                 ViewModel.SelectedItemIndex,
-                ViewModel.SelectedGroup?.Items);
+                ViewModel.WheelItems);
 
             // 最低 MIN_SPIN_RADIANS 以上の回転を加える
-            var rawDelta = targetAngle - _spinStartAngle;
-            while (rawDelta < MIN_SPIN_RADIANS)
+            var rawDelta = targetAngle - spinAnimation.SpinStartAngle;
+            while (rawDelta < SpinAnimationViewModel.MIN_SPIN_RADIANS)
             {
                 rawDelta += MathF.PI * 2f;
             }
 
             // 最大を MAX_SPIN_RADIANS に収める（超えた分は 2π で切り捨て）
-            while (rawDelta > MAX_SPIN_RADIANS)
+            while (rawDelta > SpinAnimationViewModel.MAX_SPIN_RADIANS)
             {
                 rawDelta -= MathF.PI * 2f;
             }
 
-            _spinTotalRadians = rawDelta;
+            spinAnimation.SpinTotalRadians = rawDelta;
             _spinTimer.Start();
         }
 
@@ -375,15 +499,12 @@ namespace AppRoulette
         /// <param name="e">引数（未使用）。</param>
         private async void OnSpinTimerTick(object? sender, object e)
         {
-            _spinElapsedSec += TIMER_INTERVAL_MS / 1000f;
+            var spinAnimation = ViewModel.SpinAnimation;
+            spinAnimation.AdvanceAnimation(TIMER_INTERVAL_MS);
 
-            var t = System.Math.Min(_spinElapsedSec / SPIN_DURATION_SEC, 1f);
-            var eased = EaseOutCubic((float)t);
-
-            _rotationAngle = _spinStartAngle + _spinTotalRadians * eased;
             RouletteCanvas.Invalidate();
 
-            if (t >= 1f)
+            if (spinAnimation.IsAnimationComplete)
             {
                 _spinTimer.Stop();
                 ViewModel.IsSpinning = false;
@@ -401,16 +522,19 @@ namespace AppRoulette
         private async System.Threading.Tasks.Task ShowResultDialogAsync()
         {
             var index = ViewModel.SelectedItemIndex;
-            var items = ViewModel.SelectedGroup?.Items;
-            if (index < 0 || items is null || index >= items.Count)
+            var items = ViewModel.WheelItems;
+            if (index < 0 || index >= items.Count)
             {
                 return;
             }
 
-            var selectedName = items[index].Name;
+            var selectedItem = items[index];
+            var selectedName = selectedItem.Name;
 
             // テキストボックス内でアイテムをハイライト選択
-            HighlightItemInTextBox(index);
+            var textIndex =
+                ViewModel.SelectedGroup?.Items.IndexOf(selectedItem) ?? -1;
+            HighlightItemInTextBox(textIndex);
 
             // ボタンを中央に配置するためのカスタムコンテンツ
             var stackPanel = new StackPanel
@@ -458,6 +582,10 @@ namespace AppRoulette
             };
 
             await dialog.ShowAsync();
+
+            // 「当たったら除外」モードの場合は当選アイテムを除外して再描画
+            ViewModel.ExcludeWinnerIfNeeded();
+            RouletteCanvas.Invalidate();
         }
 
         /// <summary>
@@ -637,47 +765,76 @@ namespace AppRoulette
         }
 
         /// <summary>
-        /// 選択インデックスのアイテム中心がインジケーターを向く
-        /// 目標回転角度（ラジアン）を返します。
+        /// 選択中グループのアイテム一覧をCSVファイルにエクスポートします。
         /// </summary>
-        /// <param name="selectedIndex">選択されたアイテムのインデックス。</param>
-        /// <param name="items">重み付きルーレットのアイテム一覧。</param>
-        /// <returns>目標角度（ラジアン）。</returns>
-        private static float CalcTargetAngle(
-            int selectedIndex,
-            IReadOnlyList<RouletteItem>? items)
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnExportCsvButtonClick(object sender, RoutedEventArgs e)
         {
-            if (items is null || selectedIndex < 0 || selectedIndex >= items.Count)
+            try
             {
-                return 0f;
-            }
-
-            var totalWeight = 0;
-            var precedingWeight = 0;
-            for (var i = 0; i < items.Count; i++)
-            {
-                var weight = Math.Max(0, items[i].Weight);
-                totalWeight += weight;
-
-                if (i < selectedIndex)
+                if (ViewModel.SelectedGroup is null)
                 {
-                    precedingWeight += weight;
+                    return;
                 }
-            }
 
-            var selectedWeight = Math.Max(0, items[selectedIndex].Weight);
-            if (totalWeight <= 0 || selectedWeight <= 0)
+                var picker = new Windows.Storage.Pickers.FileSavePicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation =
+                    Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeChoices.Add("CSV", new List<string> { ".csv" });
+                picker.SuggestedFileName = ViewModel.SelectedGroup.DisplayName;
+
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+
+                var csv = ViewModel.ExportItemsToCsv();
+                await Windows.Storage.FileIO.WriteTextAsync(file, csv);
+            }
+            catch (Exception ex)
             {
-                return 0f;
+                ApplicationLogger.LogError("CSVエクスポート", ex);
             }
+        }
 
-            var selectedCenterWeight = precedingWeight + selectedWeight / 2f;
+        /// <summary>
+        /// CSVファイルを読み込み、選択中グループのアイテム一覧にインポートします。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnImportCsvButtonClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (ViewModel.SelectedGroup is null)
+                {
+                    return;
+                }
 
-            // Draw では startAngle = rotationAngle - π/2 + 累積Weight角度。
-            // インジケーターは 3時方向（角度 0）なので、選択扇形の中心が
-            // 角度 0 を向くように targetAngle を決定する。
-            return MathF.PI / 2f
-                - MathF.PI * 2f * selectedCenterWeight / totalWeight;
+                var picker = new Windows.Storage.Pickers.FileOpenPicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation =
+                    Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeFilter.Add(".csv");
+
+                var file = await picker.PickSingleFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+
+                var content = await Windows.Storage.FileIO.ReadTextAsync(file);
+                ViewModel.ImportItemsFromCsv(content);
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("CSVインポート", ex);
+            }
         }
     }
 }

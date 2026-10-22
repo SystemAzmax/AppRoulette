@@ -33,7 +33,7 @@ public class SqliteItemRepository : IItemRepository
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, Label, Weight, [GroupId] FROM Items ORDER BY [GroupId], Id";
+        command.CommandText = "SELECT Id, Label, Weight, [GroupId], IsEnabled FROM Items ORDER BY [GroupId], Id";
 
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -43,7 +43,8 @@ public class SqliteItemRepository : IItemRepository
                 Id = reader.GetInt32(0),
                 Label = reader.GetString(1),
                 Weight = reader.GetInt32(2),
-                GroupId = reader.GetInt32(3)
+                GroupId = reader.GetInt32(3),
+                IsEnabled = reader.GetInt32(4) != 0
             });
         }
 
@@ -63,7 +64,7 @@ public class SqliteItemRepository : IItemRepository
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, Label, Weight, [GroupId] FROM Items WHERE [GroupId] = @groupId ORDER BY Id";
+        command.CommandText = "SELECT Id, Label, Weight, [GroupId], IsEnabled FROM Items WHERE [GroupId] = @groupId ORDER BY Id";
         command.Parameters.AddWithValue("@groupId", groupId);
 
         await using var reader = await command.ExecuteReaderAsync();
@@ -74,7 +75,8 @@ public class SqliteItemRepository : IItemRepository
                 Id = reader.GetInt32(0),
                 Label = reader.GetString(1),
                 Weight = reader.GetInt32(2),
-                GroupId = reader.GetInt32(3)
+                GroupId = reader.GetInt32(3),
+                IsEnabled = reader.GetInt32(4) != 0
             });
         }
 
@@ -92,7 +94,7 @@ public class SqliteItemRepository : IItemRepository
         await connection.OpenAsync();
 
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Id, Label, Weight, [GroupId] FROM Items WHERE Id = @id";
+        command.CommandText = "SELECT Id, Label, Weight, [GroupId], IsEnabled FROM Items WHERE Id = @id";
         command.Parameters.AddWithValue("@id", id);
 
         await using var reader = await command.ExecuteReaderAsync();
@@ -103,7 +105,8 @@ public class SqliteItemRepository : IItemRepository
                 Id = reader.GetInt32(0),
                 Label = reader.GetString(1),
                 Weight = reader.GetInt32(2),
-                GroupId = reader.GetInt32(3)
+                GroupId = reader.GetInt32(3),
+                IsEnabled = reader.GetInt32(4) != 0
             };
 
             return item;
@@ -124,13 +127,14 @@ public class SqliteItemRepository : IItemRepository
 
         using var command = connection.CreateCommand();
         command.CommandText = @"
-            INSERT INTO Items (Label, Weight, [GroupId])
-            VALUES (@label, @weight, @groupId);
+            INSERT INTO Items (Label, Weight, [GroupId], IsEnabled)
+            VALUES (@label, @weight, @groupId, @isEnabled);
             SELECT last_insert_rowid();";
 
         command.Parameters.AddWithValue("@label", item.Label);
         command.Parameters.AddWithValue("@weight", item.Weight);
         command.Parameters.AddWithValue("@groupId", item.GroupId);
+        command.Parameters.AddWithValue("@isEnabled", item.IsEnabled ? 1 : 0);
 
         var result = await command.ExecuteScalarAsync();
         int insertedId = Convert.ToInt32(result);
@@ -151,13 +155,15 @@ public class SqliteItemRepository : IItemRepository
         using var command = connection.CreateCommand();
         command.CommandText = @"
             UPDATE Items
-            SET Label = @label, Weight = @weight, [GroupId] = @groupId
+            SET Label = @label, Weight = @weight, [GroupId] = @groupId,
+                IsEnabled = @isEnabled
             WHERE Id = @id";
 
         command.Parameters.AddWithValue("@id", item.Id);
         command.Parameters.AddWithValue("@label", item.Label);
         command.Parameters.AddWithValue("@weight", item.Weight);
         command.Parameters.AddWithValue("@groupId", item.GroupId);
+        command.Parameters.AddWithValue("@isEnabled", item.IsEnabled ? 1 : 0);
 
         int affectedRows = await command.ExecuteNonQueryAsync();
 
@@ -194,11 +200,13 @@ public class SqliteItemRepository : IItemRepository
                 await using var insertCommand = connection.CreateCommand();
                 insertCommand.Transaction = transaction;
                 insertCommand.CommandText = @"
-                    INSERT INTO Items (Label, Weight, [GroupId])
-                    VALUES (@label, @weight, @groupId);";
+                    INSERT INTO Items (Label, Weight, [GroupId], IsEnabled)
+                    VALUES (@label, @weight, @groupId, @isEnabled);";
                 insertCommand.Parameters.AddWithValue("@label", item.Name);
                 insertCommand.Parameters.AddWithValue("@weight", item.Weight);
                 insertCommand.Parameters.AddWithValue("@groupId", groupId);
+                insertCommand.Parameters.AddWithValue(
+                    "@isEnabled", item.IsEnabled ? 1 : 0);
                 await insertCommand.ExecuteNonQueryAsync();
             }
 

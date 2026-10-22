@@ -3,8 +3,8 @@ using AppRoulette.Models;
 namespace AppRoulette.Services;
 
 /// <summary>
-/// ルーレットデータの永続化を担うサービスのインターフェース。
-/// 将来的な DB 化に備えて抽象化しています。
+/// JSON ファイル形式の旧ルーレットデータ永続化を担うサービスのインターフェース。
+/// 現行アプリ本体のグループ・アイテム・設定値は SQLite リポジトリで永続化します。
 /// </summary>
 public interface IDataPersistenceService
 {
