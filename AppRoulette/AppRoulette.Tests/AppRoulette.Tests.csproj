@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AppRoulette\AppRoulette.csproj" />
+    <ProjectReference Include="..\AppRoulette.Core\AppRoulette.Core.csproj" />
   </ItemGroup>
 
 </Project>

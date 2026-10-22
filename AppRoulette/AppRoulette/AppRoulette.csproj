@@ -25,6 +25,10 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AppRoulette.Core\AppRoulette.Core.csproj" />
+  </ItemGroup>
+
     <!-- Publish Properties -->
   <PropertyGroup>
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>

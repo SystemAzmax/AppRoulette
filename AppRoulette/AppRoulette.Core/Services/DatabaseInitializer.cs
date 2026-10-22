@@ -1,5 +1,4 @@
 using Microsoft.Data.Sqlite;
-using Windows.Storage;
 
 namespace AppRoulette.Services;
 
@@ -46,7 +45,11 @@ public class DatabaseInitializer
     /// <returns>データベースファイルの完全パス。</returns>
     public static string GetDatabasePath()
     {
-        string localFolderPath = ApplicationData.Current.LocalFolder.Path;
+        string localFolderPath = Path.Combine(
+            Environment.GetFolderPath(
+                Environment.SpecialFolder.LocalApplicationData),
+            "AppRoulette");
+        Directory.CreateDirectory(localFolderPath);
         return Path.Combine(localFolderPath, DB_FILE_NAME);
     }
 
