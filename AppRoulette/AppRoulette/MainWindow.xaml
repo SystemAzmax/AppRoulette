@@ -17,7 +17,7 @@
         <!--
         ルート Grid: 左列（ルーレット）/ 中央列（リスト項目タブ）/ 右列（操作パネル）
     -->
-    <Grid Margin="16" Loaded="OnRootGridLoaded">
+    <Grid Margin="16" Loaded="OnRootGridLoaded" PreviewKeyDown="OnRootGridPreviewKeyDown">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="16" />

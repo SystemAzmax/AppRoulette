@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10" IgnorableNamespaces="uap rescap systemai build" xmlns:build="http://schemas.microsoft.com/developer/appx/2015/build">
+  <!--
+    このパッケージ マニフェスト ファイルは、ビルド処理で生成されたものです。
+
+    このファイルに対する変更は、ファイルを再生成すると失われます。このファイルのエラーを修正するには、ソースの .appxmanifest ファイルを編集してください。
+
+    パッケージ マニフェスト ファイルの詳細については、http://go.microsoft.com/fwlink/?LinkID=241727 を参照してください
+  -->
+  <Identity Name="91d0b9ad-65b1-4502-ac9c-d13dc83c4750" Publisher="CN=dqm11" Version="1.0.0.0" ProcessorArchitecture="x64" />
+  <mp:PhoneIdentity PhoneProductId="91d0b9ad-65b1-4502-ac9c-d13dc83c4750" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+  <Properties>
+    <DisplayName>AppRoulette (Package)</DisplayName>
+    <PublisherDisplayName>azmax</PublisherDisplayName>
+    <Logo>Images\StoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+    <PackageDependency Name="Microsoft.WindowsAppRuntime.2" MinVersion="2.2.0.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+    <PackageDependency Name="Microsoft.VCLibs.140.00.Debug.UWPDesktop" MinVersion="14.0.33728.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="JA-JP" />
+  </Resources>
+  <Applications>
+    <Application Id="App" Executable="AppRoulette\AppRoulette.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="AppRoulette (Package)" Description="AppRoulette (Package)" BackgroundColor="transparent" Square150x150Logo="Images\Square150x150Logo.png" Square44x44Logo="Images\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Images\SplashScreen.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+    <systemai:Capability Name="systemAIModels" />
+  </Capabilities>
+  <build:Metadata>
+    <build:Item Name="Microsoft.Build.DesktopBridge.Tasks.dll" Version="18.9.1013.26605" />
+    <build:Item Name="TargetFrameworkMoniker" Value=".NETFramework,Version=v4.5.1" />
+    <build:Item Name="VisualStudio" Version="18.0" />
+    <build:Item Name="VisualStudioEdition" Value="Microsoft Visual Studio Community 2026" />
+    <build:Item Name="OperatingSystem" Version="10.0.26100.8875 (WinBuild.160101.0800)" />
+    <build:Item Name="Microsoft.Build.AppxPackage.dll" Version="18.9.1237.3270" />
+    <build:Item Name="ProjectGUID" Value="05a4c650-53ab-462e-849c-5a8c64d5fb40" />
+    <build:Item Name="makepri.exe" Version="10.0.28000.1839 (WinBuild.160101.0800)" />
+  </build:Metadata>
+</Package>

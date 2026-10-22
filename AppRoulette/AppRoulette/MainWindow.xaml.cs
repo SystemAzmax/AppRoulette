@@ -287,6 +287,31 @@ namespace AppRoulette
             UpdateItemViewTabVisualState(isDetailSelected: true);
         }
 
+        /// <summary>
+        /// ルートGridのキーダウンイベントハンドラー（トンネリング）。
+        /// Space または Enter キーで、テキスト入力中でない場合にルーレットを回します。
+        /// </summary>
+        /// <param name="sender">ルートGrid。</param>
+        /// <param name="e">キーイベント引数。</param>
+        private void OnRootGridPreviewKeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (e.Key is not (Windows.System.VirtualKey.Space
+                           or Windows.System.VirtualKey.Enter))
+            {
+                return;
+            }
+
+            var focused = FocusManager.GetFocusedElement(
+                ((FrameworkElement)Content).XamlRoot);
+            if (focused is TextBox or NumberBox)
+            {
+                return;
+            }
+
+            TryStartSpin();
+            e.Handled = true;
+        }
+
         // ---------------------------------------------------------------
         // リスト項目タブ（詳細 / テキスト）切り替え
         // ---------------------------------------------------------------
