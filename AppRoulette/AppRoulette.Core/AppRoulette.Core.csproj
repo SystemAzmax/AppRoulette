@@ -5,6 +5,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>AppRoulette</RootNamespace>
+    <!-- パッケージ プロジェクト（wapproj）が RuntimeIdentifier を付けて Core をビルドするため、
+         Windows の RID でも復元しておく。通常の参照では RID を引き継がないよう RID 非依存のままにする -->
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <IsRidAgnostic>true</IsRidAgnostic>
   </PropertyGroup>
 
   <ItemGroup>
