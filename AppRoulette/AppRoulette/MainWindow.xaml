@@ -455,6 +455,33 @@
                         HorizontalContentAlignment="Center" />
                 </StackPanel>
 
+                <!-- 全リストのバックアップ -->
+                <TextBlock
+                    Text="バックアップ（全リスト）"
+                    Margin="0,8,0,0"
+                    FontSize="12"
+                    FontWeight="SemiBold" />
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        Content="バックアップ保存"
+                        Click="OnSaveBackupButtonClick"
+                        Padding="8,4"
+                        CornerRadius="4"
+                        MinWidth="132"
+                        HorizontalContentAlignment="Center"
+                        ToolTipService.ToolTip="すべてのリストとアイテムを 1 つのファイルに保存します。" />
+                    <Button
+                        Content="バックアップ復元"
+                        Click="OnRestoreBackupButtonClick"
+                        Padding="8,4"
+                        CornerRadius="4"
+                        MinWidth="132"
+                        HorizontalContentAlignment="Center"
+                        ToolTipService.ToolTip="バックアップファイルから、すべてのリストとアイテムを復元します。今のデータは置き換わります。" />
+                </StackPanel>
+
                 <!-- OneDrive 同期 -->
                 <TextBlock
                     Text="OneDrive 同期"

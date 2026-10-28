@@ -87,7 +87,8 @@ namespace AppRoulette
                 new SqliteAppSettingsRepository(),
                 new OneDriveFolderSyncService(),
                 new SyncTimestampStore(),
-                _dialogService);
+                _dialogService,
+                new SqliteBackupRepository());
 
             ViewModel.PropertyChanged += (_, e) =>
             {
@@ -877,6 +878,77 @@ namespace AppRoulette
                     "CSV インポート",
                     "CSV ファイルを読み込めませんでした。"
                     + "ファイルが Excel などのアプリで開かれていないか確認してください。"
+                    + $"\n\n詳細: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 全リストとアイテムをバックアップファイルに保存します。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnSaveBackupButtonClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var picker = new Windows.Storage.Pickers.FileSavePicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation =
+                    Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeChoices.Add(
+                    "AppRoulette バックアップ", new List<string> { ".json" });
+                picker.SuggestedFileName = $"AppRoulette-backup-{DateTime.Now:yyyyMMdd-HHmm}";
+
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+
+                await Windows.Storage.FileIO.WriteTextAsync(file, ViewModel.CreateBackupJson());
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("バックアップ保存", ex);
+                await _dialogService.ShowMessageAsync(
+                    "バックアップ保存",
+                    "バックアップを保存できませんでした。"
+                    + $"\n\n詳細: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// バックアップファイルを読み込み、全リストとアイテムを置き換えます。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnRestoreBackupButtonClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var picker = new Windows.Storage.Pickers.FileOpenPicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation =
+                    Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeFilter.Add(".json");
+
+                var file = await picker.PickSingleFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+
+                var json = await Windows.Storage.FileIO.ReadTextAsync(file);
+                await ViewModel.RestoreBackupAsync(json);
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("バックアップから復元", ex);
+                await _dialogService.ShowMessageAsync(
+                    "バックアップから復元",
+                    "バックアップファイルを読み込めませんでした。"
                     + $"\n\n詳細: {ex.Message}");
             }
         }

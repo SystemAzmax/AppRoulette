@@ -1,4 +1,5 @@
 using AppRoulette.Models;
+using AppRoulette.Services;
 using AppRoulette.Tests.Fakes;
 using AppRoulette.ViewModels;
 
@@ -49,7 +50,8 @@ public class MainViewModelTests
         FakeItemRepository? customRepository = null,
         FakeGroupRepository? customGroupRepository = null,
         FakeAppSettingsRepository? customSettingsRepository = null,
-        FakeDialogService? dialogService = null)
+        FakeDialogService? dialogService = null,
+        FakeBackupRepository? backupRepository = null)
     {
         FakeItemRepository fakeRepo = customRepository ?? new FakeItemRepository();
         FakeGroupRepository fakeGroupRepo = customGroupRepository ?? new FakeGroupRepository();
@@ -69,7 +71,8 @@ public class MainViewModelTests
             fakeRepo,
             fakeGroupRepo,
             fakeSettingsRepository,
-            dialogService: dialogService);
+            dialogService: dialogService,
+            backupRepository: backupRepository);
     }
 
     // ---------------------------------------------------------------
@@ -658,6 +661,201 @@ public class MainViewModelTests
         // Assert
         Assert.StartsWith("アイテム名,Weight\n", csv);
         Assert.Equal(originalText, sut.ItemsText);
+    }
+
+    // ---------------------------------------------------------------
+    // バックアップ・復元
+    // ---------------------------------------------------------------
+
+    /// <summary>
+    /// 復元テスト用のバックアップファイルの内容を作成します。
+    /// リスト 2 件、アイテム 3 件を含みます。
+    /// </summary>
+    private static string CreateBackupJsonForRestore()
+    {
+        var groups = new List<RouletteGroup>
+        {
+            new(1, "朝会")
+            {
+                ExcludeOnWin = true,
+                Items =
+                {
+                    new RouletteItem("Aさん") { Weight = 2 },
+                    new RouletteItem("Bさん") { IsEnabled = false },
+                },
+            },
+            new(2, "昼食")
+            {
+                Items = { new RouletteItem("カレー") },
+            },
+        };
+
+        return BackupSerializer.Serialize(groups, DateTime.UtcNow);
+    }
+
+    [Fact]
+    public async Task CreateBackupJson_保存前の編集がある場合_編集を含めて全リストを書き出す()
+    {
+        // Arrange
+        var sut = CreateSut(itemCountInGroup1: 1);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.ItemsText = "編集したアイテム,4";
+        sut.IsExcludeOnWinEnabled = true;
+
+        // Act
+        var json = sut.CreateBackupJson();
+        var groups = BackupSerializer.Deserialize(json);
+
+        // Assert
+        Assert.Equal(sut.GroupList.Count, groups.Count);
+        Assert.Equal("Roulette1", groups[0].DisplayName);
+        Assert.True(groups[0].ExcludeOnWin);
+        var item = Assert.Single(groups[0].Items);
+        Assert.Equal("編集したアイテム", item.Name);
+        Assert.Equal(4, item.Weight);
+    }
+
+    [Fact]
+    public async Task RestoreBackupAsync_復元を選んだ場合_全リストを置き換えて再起動後も残る()
+    {
+        // Arrange
+        var groupRepo = new FakeGroupRepository();
+        var itemRepo = new FakeItemRepository();
+        itemRepo.InitializeWithItems(new List<Item> { new("元のアイテム", groupId: 1) });
+        var dialog = new FakeDialogService(confirmResult: true);
+        var sut = CreateSut(
+            customRepository: itemRepo,
+            customGroupRepository: groupRepo,
+            dialogService: dialog,
+            backupRepository: new FakeBackupRepository(groupRepo, itemRepo));
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.RestoreBackupAsync(CreateBackupJsonForRestore());
+
+        var allItems = await itemRepo.GetItemsAsync();
+        var restartedSut = CreateSut(customRepository: itemRepo, customGroupRepository: groupRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(1, dialog.ConfirmCallCount);
+        Assert.Contains("今のリスト 9 件", dialog.LastConfirmMessage);
+        Assert.Contains("バックアップのリスト 2 件（アイテム 3 件）", dialog.LastConfirmMessage);
+        Assert.Contains("復元しました", dialog.ShownMessages.Last());
+        Assert.Equal(new[] { "朝会", "昼食" }, sut.GroupList.Select(g => g.DisplayName));
+        Assert.Equal("朝会", sut.SelectedGroup?.DisplayName);
+        Assert.Equal("Aさん,2\nBさん,1", sut.ItemsText);
+        Assert.DoesNotContain(allItems, item => item.Label == "元のアイテム");
+        Assert.Equal(new[] { "朝会", "昼食" }, restartedSut.GroupList.Select(g => g.DisplayName));
+        Assert.True(restartedSut.GroupList[0].ExcludeOnWin);
+        Assert.False(restartedSut.GroupList[0].Items[1].IsEnabled);
+    }
+
+    [Fact]
+    public async Task RestoreBackupAsync_キャンセルした場合_データを変更しない()
+    {
+        // Arrange
+        var groupRepo = new FakeGroupRepository();
+        var itemRepo = new FakeItemRepository();
+        itemRepo.InitializeWithItems(new List<Item> { new("元のアイテム", groupId: 1) });
+        var dialog = new FakeDialogService(confirmResult: false);
+        var backupRepo = new FakeBackupRepository(groupRepo, itemRepo);
+        var sut = CreateSut(
+            customRepository: itemRepo,
+            customGroupRepository: groupRepo,
+            dialogService: dialog,
+            backupRepository: backupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.RestoreBackupAsync(CreateBackupJsonForRestore());
+
+        // Assert
+        Assert.Equal(1, dialog.ConfirmCallCount);
+        Assert.Equal(0, backupRepo.ReplaceAllCallCount);
+        Assert.Equal(9, sut.GroupList.Count);
+        Assert.Equal("元のアイテム,1", sut.ItemsText);
+    }
+
+    [Fact]
+    public async Task RestoreBackupAsync_このアプリのバックアップではない場合_確認せずに理由を表示する()
+    {
+        // Arrange
+        var groupRepo = new FakeGroupRepository();
+        var itemRepo = new FakeItemRepository();
+        var dialog = new FakeDialogService(confirmResult: true);
+        var backupRepo = new FakeBackupRepository(groupRepo, itemRepo);
+        var sut = CreateSut(
+            customRepository: itemRepo,
+            customGroupRepository: groupRepo,
+            dialogService: dialog,
+            backupRepository: backupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.RestoreBackupAsync("{ \"App\": \"OtherApp\", \"FormatVersion\": 1 }");
+
+        // Assert
+        Assert.Equal(0, dialog.ConfirmCallCount);
+        Assert.Equal(0, backupRepo.ReplaceAllCallCount);
+        Assert.Contains(
+            "AppRoulette のバックアップファイルではありません",
+            Assert.Single(dialog.ShownMessages));
+        Assert.Equal(9, sut.GroupList.Count);
+    }
+
+    [Fact]
+    public async Task RestoreBackupAsync_保存に失敗した場合_理由を表示してデータを変更しない()
+    {
+        // Arrange
+        var groupRepo = new FakeGroupRepository();
+        var itemRepo = new FakeItemRepository();
+        itemRepo.InitializeWithItems(new List<Item> { new("元のアイテム", groupId: 1) });
+        var dialog = new FakeDialogService(confirmResult: true);
+        var backupRepo = new FakeBackupRepository(groupRepo, itemRepo, shouldFail: true);
+        var sut = CreateSut(
+            customRepository: itemRepo,
+            customGroupRepository: groupRepo,
+            dialogService: dialog,
+            backupRepository: backupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.RestoreBackupAsync(CreateBackupJsonForRestore());
+
+        // Assert
+        Assert.Equal(1, backupRepo.ReplaceAllCallCount);
+        Assert.Contains("データは変更されていません", Assert.Single(dialog.ShownMessages));
+        Assert.Equal("保存失敗", sut.SaveStatusText);
+        Assert.Equal(9, sut.GroupList.Count);
+        Assert.Equal("元のアイテム,1", sut.ItemsText);
+    }
+
+    [Fact]
+    public async Task RestoreBackupAsync_保存待ちの編集がある場合_復元後に古い内容を書き込まない()
+    {
+        // Arrange
+        var groupRepo = new FakeGroupRepository();
+        var itemRepo = new FakeItemRepository();
+        var sut = CreateSut(
+            customRepository: itemRepo,
+            customGroupRepository: groupRepo,
+            dialogService: new FakeDialogService(confirmResult: true),
+            backupRepository: new FakeBackupRepository(groupRepo, itemRepo));
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // 復元後に選択されない 2 件目のリストで、保存待ちの編集を作る
+        sut.SelectedGroup = sut.GroupList[1];
+        sut.ItemsText = "保存待ちの古い編集,1";
+
+        // Act
+        await sut.RestoreBackupAsync(CreateBackupJsonForRestore());
+        await Task.Delay(100);
+
+        var items = await itemRepo.GetItemsByGroupAsync(2);
+
+        // Assert
+        Assert.Equal(new[] { "カレー" }, items.Select(item => item.Label));
     }
 
     [Fact]

@@ -44,6 +44,7 @@ public class MainViewModel : ObservableObject
     private readonly ICloudSyncService? _cloudSyncService;
     private readonly SyncTimestampStore? _syncTimestampStore;
     private readonly IDialogService? _dialogService;
+    private readonly IBackupRepository? _backupRepository;
 
     private readonly Dictionary<int, CancellationTokenSource> _saveDebounceTokens =
         new();
@@ -418,6 +419,9 @@ public class MainViewModel : ObservableObject
     /// 確認やメッセージを表示するサービス。
     /// null の場合は確認せずに実行し、メッセージも表示しません。
     /// </param>
+    /// <param name="backupRepository">
+    /// バックアップからの復元で全データを置き換えるリポジトリ。null の場合は復元できません。
+    /// </param>
     public MainViewModel(
         IRandomService randomService,
         IItemRepository itemRepository,
@@ -425,7 +429,8 @@ public class MainViewModel : ObservableObject
         IAppSettingsRepository appSettingsRepository,
         ICloudSyncService? cloudSyncService = null,
         SyncTimestampStore? syncTimestampStore = null,
-        IDialogService? dialogService = null)
+        IDialogService? dialogService = null,
+        IBackupRepository? backupRepository = null)
     {
         _randomService = randomService;
         _itemRepository = itemRepository;
@@ -434,6 +439,7 @@ public class MainViewModel : ObservableObject
         _cloudSyncService = cloudSyncService;
         _syncTimestampStore = syncTimestampStore;
         _dialogService = dialogService;
+        _backupRepository = backupRepository;
         InitializeCommand = new AsyncRelayCommand(InitializeAsync);
         SpinCommand = new RelayCommand(Spin, CanSpin);
         ClearItemsCommand = new AsyncRelayCommand(ClearItemsAsync);
@@ -1755,6 +1761,102 @@ public class MainViewModel : ObservableObject
                 CSV_IMPORT_TITLE,
                 $"最大 {RouletteGroup.MAX_ITEM_COUNT} 件のため、"
                     + $"{RouletteGroup.MAX_ITEM_COUNT + 1} 件目以降の {skippedCount} 件は読み込みませんでした。");
+        }
+    }
+
+    /// <summary>バックアップからの復元で表示するダイアログのタイトル。</summary>
+    private const string BACKUP_RESTORE_TITLE = "バックアップから復元";
+
+    /// <summary>バックアップからの復元の確認の実行ボタンの表示テキスト。</summary>
+    private const string BACKUP_RESTORE_CONFIRM_BUTTON_TEXT = "復元";
+
+    /// <summary>
+    /// 全リストとアイテムのバックアップファイルの内容を作成します。
+    /// まだ保存されていない直前の編集も含めます。
+    /// </summary>
+    /// <returns>バックアップファイルの内容（JSON）。</returns>
+    public string CreateBackupJson() =>
+        BackupSerializer.Serialize(GroupList, DateTime.UtcNow);
+
+    /// <summary>
+    /// バックアップファイルの内容で、全リストとアイテムを置き換えます。
+    /// 置き換える前に利用者に確認し、内容が正しくない場合や保存に失敗した場合は
+    /// 利用者に知らせて、データを変更しません。
+    /// </summary>
+    /// <param name="json">バックアップファイルの内容（JSON）。</param>
+    public async Task RestoreBackupAsync(string json)
+    {
+        if (_backupRepository is null)
+        {
+            return;
+        }
+
+        List<RouletteGroup> groups;
+        try
+        {
+            groups = BackupSerializer.Deserialize(json);
+        }
+        catch (BackupFormatException ex)
+        {
+            await ShowMessageAsync(BACKUP_RESTORE_TITLE, ex.Message);
+            return;
+        }
+
+        var itemCount = groups.Sum(group => group.Items.Count);
+        if (!await ConfirmAsync(
+                "バックアップから復元しますか？",
+                $"今のリスト {GroupList.Count} 件とそのアイテムをすべて削除し、"
+                    + $"バックアップのリスト {groups.Count} 件（アイテム {itemCount} 件）に置き換えます。"
+                    + "この操作は元に戻せません。",
+                BACKUP_RESTORE_CONFIRM_BUTTON_TEXT))
+        {
+            return;
+        }
+
+        // 保存待ちの古い内容が、復元後のデータに書き込まれないようにする
+        CancelPendingItemSaves();
+
+        try
+        {
+            SaveStatusText = SAVE_STATUS_SAVING;
+            await _backupRepository.ReplaceAllAsync(groups);
+
+            GroupList = new ObservableCollection<RouletteGroup>(groups);
+            SelectedGroup = GroupList[0];
+            UpdateGroupCommandStates();
+            SaveStatusText = SAVE_STATUS_SAVED;
+        }
+        catch (Exception ex)
+        {
+            SaveStatusText = SAVE_STATUS_FAILED;
+            ApplicationLogger.LogError("バックアップから復元", ex);
+            await ShowMessageAsync(
+                BACKUP_RESTORE_TITLE,
+                "復元できませんでした。データは変更されていません。"
+                + $"\n\n詳細: {ex.Message}");
+            return;
+        }
+
+        // OneDrive 同期を使っている場合は、復元した内容を他の PC にも反映する
+        foreach (var group in groups)
+        {
+            _ = UploadGroupSafelyAsync(group);
+        }
+
+        await ShowMessageAsync(
+            BACKUP_RESTORE_TITLE,
+            $"バックアップから復元しました（リスト {groups.Count} 件、アイテム {itemCount} 件）。");
+    }
+
+    /// <summary>
+    /// デバウンス中で保存待ちのアイテム保存をすべて取り消します。
+    /// </summary>
+    private void CancelPendingItemSaves()
+    {
+        // 取り消しで保存処理が終わると辞書から削除されるため、コピーに対して取り消す
+        foreach (var cts in _saveDebounceTokens.Values.ToList())
+        {
+            cts.Cancel();
         }
     }
 
