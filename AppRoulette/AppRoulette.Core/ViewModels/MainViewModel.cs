@@ -1461,10 +1461,7 @@ public class MainViewModel : ObservableObject
         cancellationToken.ThrowIfCancellationRequested();
 
         var itemsSnapshot = group.Items
-            .Select(item => new RouletteItem(item.Name)
-            {
-                Weight = item.Weight,
-            })
+            .Select(CloneItem)
             .ToList();
 
         await _itemRepository.SaveItemsByGroupAsync(group.Id, itemsSnapshot);

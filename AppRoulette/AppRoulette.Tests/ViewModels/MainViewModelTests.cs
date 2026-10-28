@@ -1056,6 +1056,65 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task EditableItems_有効チェックを外した場合_再初期化で無効状態が復元される()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        fakeRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", weight: 1, groupId: 1),
+            new("アイテムB", weight: 3, groupId: 1),
+            new("アイテムC", weight: 1, groupId: 1),
+        });
+        var sut = CreateSut(customRepository: fakeRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.EditableItems[1].IsEnabled = false;
+        await Task.Delay(100);
+
+        var restartedSut = CreateSut(customRepository: fakeRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        var items = restartedSut.SelectedGroup!.Items;
+        Assert.True(items[0].IsEnabled);
+        Assert.False(items[1].IsEnabled);
+        Assert.True(items[2].IsEnabled);
+        Assert.Equal(3, items[1].Weight);
+    }
+
+    [Fact]
+    public async Task ExcludeWinnerIfNeeded_モード有効時_再初期化で除外状態が復元される()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        fakeRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", groupId: 1),
+            new("アイテムB", groupId: 1),
+            new("アイテムC", groupId: 1),
+        });
+        var sut = CreateSut(customRepository: fakeRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.IsExcludeOnWinEnabled = true;
+        sut.SpinCommand.Execute(null);
+        var winnerName = sut.WheelItems[sut.SelectedItemIndex].Name;
+
+        // Act
+        sut.ExcludeWinnerIfNeeded();
+        await Task.Delay(100);
+
+        var restartedSut = CreateSut(customRepository: fakeRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        var winner = restartedSut.SelectedGroup!.Items.Single(item => item.Name == winnerName);
+        Assert.False(winner.IsEnabled);
+        Assert.Equal(2, restartedSut.WheelItems.Count);
+    }
+
+    [Fact]
     public async Task IsExcludeOnWinEnabled_設定変更時_選択中グループへ反映される()
     {
         // Arrange

@@ -51,6 +51,7 @@ internal class FakeItemRepository : IItemRepository
             existing.Label = item.Label;
             existing.Weight = item.Weight;
             existing.GroupId = item.GroupId;
+            existing.IsEnabled = item.IsEnabled;
             return Task.FromResult(1);
         }
 
@@ -71,6 +72,7 @@ internal class FakeItemRepository : IItemRepository
             _items.Add(new Item(item.Name, item.Weight, groupId)
             {
                 Id = _nextId++,
+                IsEnabled = item.IsEnabled,
             });
         }
 
