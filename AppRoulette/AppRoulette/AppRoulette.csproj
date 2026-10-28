@@ -26,6 +26,8 @@
     <!-- 「ライセンス情報」で開く、使用しているソフトウェアのライセンス表示。
          パッケージを更新したときの作り直し方は docs/BuildGuide.md を参照 -->
     <Content Include="ThirdPartyNotices.txt" CopyToOutputDirectory="PreserveNewest" />
+    <!-- exe のアイコンと同じものを、ウィンドウとタスクバーのアイコンにも使う（App.xaml.cs で読み込む） -->
+    <Content Include="Copilot_20260614_202528.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
