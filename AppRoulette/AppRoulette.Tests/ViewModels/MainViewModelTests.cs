@@ -49,7 +49,7 @@ public class MainViewModelTests
         FakeItemRepository? customRepository = null,
         FakeGroupRepository? customGroupRepository = null,
         FakeAppSettingsRepository? customSettingsRepository = null,
-        FakeConfirmationService? confirmationService = null)
+        FakeDialogService? dialogService = null)
     {
         FakeItemRepository fakeRepo = customRepository ?? new FakeItemRepository();
         FakeGroupRepository fakeGroupRepo = customGroupRepository ?? new FakeGroupRepository();
@@ -69,7 +69,7 @@ public class MainViewModelTests
             fakeRepo,
             fakeGroupRepo,
             fakeSettingsRepository,
-            confirmationService: confirmationService);
+            dialogService: dialogService);
     }
 
     // ---------------------------------------------------------------
@@ -380,11 +380,11 @@ public class MainViewModelTests
         {
             new("アイテムA", groupId: 1),
         });
-        var confirmation = new FakeConfirmationService(result: false);
+        var dialog = new FakeDialogService(confirmResult: false);
         var sut = CreateSut(
             customRepository: fakeItemRepo,
             customGroupRepository: fakeGroupRepo,
-            confirmationService: confirmation);
+            dialogService: dialog);
         await sut.InitializeCommand.ExecuteAsync(null);
 
         // Act
@@ -395,7 +395,7 @@ public class MainViewModelTests
         await restartedSut.InitializeCommand.ExecuteAsync(null);
 
         // Assert
-        Assert.Equal(1, confirmation.CallCount);
+        Assert.Equal(1, dialog.ConfirmCallCount);
         Assert.Equal(9, sut.GroupList.Count);
         Assert.Equal(1, sut.SelectedGroup?.Id);
         Assert.Single(items);
@@ -412,10 +412,10 @@ public class MainViewModelTests
             new("アイテムA", groupId: 1),
             new("アイテムB", groupId: 1),
         });
-        var confirmation = new FakeConfirmationService(result: true);
+        var dialog = new FakeDialogService(confirmResult: true);
         var sut = CreateSut(
             customRepository: fakeItemRepo,
-            confirmationService: confirmation);
+            dialogService: dialog);
         await sut.InitializeCommand.ExecuteAsync(null);
 
         // Act
@@ -424,9 +424,9 @@ public class MainViewModelTests
         var items = await fakeItemRepo.GetItemsByGroupAsync(1);
 
         // Assert
-        Assert.Equal(1, confirmation.CallCount);
-        Assert.Contains("「Roulette1」", confirmation.LastMessage);
-        Assert.Contains("2 件", confirmation.LastMessage);
+        Assert.Equal(1, dialog.ConfirmCallCount);
+        Assert.Contains("「Roulette1」", dialog.LastConfirmMessage);
+        Assert.Contains("2 件", dialog.LastConfirmMessage);
         Assert.Equal(8, sut.GroupList.Count);
         Assert.Empty(items);
     }
@@ -435,7 +435,7 @@ public class MainViewModelTests
     public async Task ClearItemsCommand_確認でキャンセルした場合_アイテムを削除しない()
     {
         // Arrange
-        var confirmation = new FakeConfirmationService(result: false);
+        var dialog = new FakeDialogService(confirmResult: false);
         var fakeItemRepo = new FakeItemRepository();
         fakeItemRepo.InitializeWithItems(new List<Item>
         {
@@ -445,7 +445,7 @@ public class MainViewModelTests
         });
         var sut = CreateSut(
             customRepository: fakeItemRepo,
-            confirmationService: confirmation);
+            dialogService: dialog);
         await sut.InitializeCommand.ExecuteAsync(null);
 
         // Act
@@ -455,7 +455,7 @@ public class MainViewModelTests
         var items = await fakeItemRepo.GetItemsByGroupAsync(1);
 
         // Assert
-        Assert.Equal(1, confirmation.CallCount);
+        Assert.Equal(1, dialog.ConfirmCallCount);
         Assert.Equal(3, sut.ItemCount);
         Assert.Equal(3, sut.EditableItems.Count);
         Assert.Equal(3, items.Count);
@@ -465,7 +465,7 @@ public class MainViewModelTests
     public async Task ClearItemsCommand_確認で削除を選んだ場合_アイテム数を示して削除する()
     {
         // Arrange
-        var confirmation = new FakeConfirmationService(result: true);
+        var dialog = new FakeDialogService(confirmResult: true);
         var fakeItemRepo = new FakeItemRepository();
         fakeItemRepo.InitializeWithItems(new List<Item>
         {
@@ -475,7 +475,7 @@ public class MainViewModelTests
         });
         var sut = CreateSut(
             customRepository: fakeItemRepo,
-            confirmationService: confirmation);
+            dialogService: dialog);
         await sut.InitializeCommand.ExecuteAsync(null);
 
         // Act
@@ -485,8 +485,8 @@ public class MainViewModelTests
         var items = await fakeItemRepo.GetItemsByGroupAsync(1);
 
         // Assert
-        Assert.Equal(1, confirmation.CallCount);
-        Assert.Contains("3 件", confirmation.LastMessage);
+        Assert.Equal(1, dialog.ConfirmCallCount);
+        Assert.Contains("3 件", dialog.LastConfirmMessage);
         Assert.Equal(0, sut.ItemCount);
         Assert.Equal(string.Empty, sut.ItemsText);
         Assert.Empty(items);
@@ -496,16 +496,168 @@ public class MainViewModelTests
     public async Task ClearItemsCommand_アイテムが無い場合_確認を表示しない()
     {
         // Arrange
-        var confirmation = new FakeConfirmationService(result: false);
-        var sut = CreateSut(confirmationService: confirmation);
+        var dialog = new FakeDialogService(confirmResult: false);
+        var sut = CreateSut(dialogService: dialog);
         await sut.InitializeCommand.ExecuteAsync(null);
 
         // Act
         await sut.ClearItemsCommand.ExecuteAsync(null);
 
         // Assert
-        Assert.Equal(0, confirmation.CallCount);
+        Assert.Equal(0, dialog.ConfirmCallCount);
         Assert.Equal(0, sut.ItemCount);
+    }
+
+    // ---------------------------------------------------------------
+    // CSV インポート・エクスポート
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public async Task ImportItemsFromCsvAsync_アイテムが無い場合_確認せずにヘッダーを除いて読み込む()
+    {
+        // Arrange
+        var dialog = new FakeDialogService(confirmResult: false);
+        var sut = CreateSut(dialogService: dialog);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.ImportItemsFromCsvAsync("アイテム名,Weight\r\nアイテムA,3\r\nアイテムB\r\n");
+
+        // Assert
+        Assert.Equal(0, dialog.ConfirmCallCount);
+        Assert.Empty(dialog.ShownMessages);
+        Assert.Equal("アイテムA,3\nアイテムB,1", sut.ItemsText);
+        Assert.Equal(2, sut.ItemCount);
+    }
+
+    [Fact]
+    public async Task ImportItemsFromCsvAsync_既存アイテムがありキャンセルした場合_置き換えない()
+    {
+        // Arrange
+        var dialog = new FakeDialogService(confirmResult: false);
+        var sut = CreateSut(itemCountInGroup1: 2, dialogService: dialog);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        var originalText = sut.ItemsText;
+
+        // Act
+        await sut.ImportItemsFromCsvAsync("アイテムX,5");
+
+        // Assert
+        Assert.Equal(1, dialog.ConfirmCallCount);
+        Assert.Equal(originalText, sut.ItemsText);
+        Assert.Equal(2, sut.ItemCount);
+    }
+
+    [Fact]
+    public async Task ImportItemsFromCsvAsync_既存アイテムがあり置き換えを選んだ場合_件数を示して置き換えて保存する()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        fakeRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", groupId: 1),
+            new("アイテムB", groupId: 1),
+        });
+        var dialog = new FakeDialogService(confirmResult: true);
+        var sut = CreateSut(customRepository: fakeRepo, dialogService: dialog);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.ImportItemsFromCsvAsync("アイテムX,5");
+        await Task.Delay(100);
+
+        var items = await fakeRepo.GetItemsByGroupAsync(1);
+
+        // Assert
+        Assert.Equal(1, dialog.ConfirmCallCount);
+        Assert.Contains("「Roulette1」のアイテム 2 件", dialog.LastConfirmMessage);
+        Assert.Contains("CSV ファイルのアイテム 1 件", dialog.LastConfirmMessage);
+        Assert.Equal("アイテムX,5", sut.ItemsText);
+        Assert.Single(items);
+        Assert.Equal("アイテムX", items[0].Label);
+        Assert.Equal(5, items[0].Weight);
+    }
+
+    [Fact]
+    public async Task ImportItemsFromCsvAsync_読み込めるアイテムが無い場合_メッセージを表示して変更しない()
+    {
+        // Arrange
+        var dialog = new FakeDialogService();
+        var sut = CreateSut(itemCountInGroup1: 2, dialogService: dialog);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        var originalText = sut.ItemsText;
+
+        // Act
+        await sut.ImportItemsFromCsvAsync("アイテム名,Weight\n\n");
+
+        // Assert
+        Assert.Equal(0, dialog.ConfirmCallCount);
+        Assert.Single(dialog.ShownMessages);
+        Assert.Contains("読み込めるアイテムがありませんでした", dialog.ShownMessages[0]);
+        Assert.Equal(originalText, sut.ItemsText);
+    }
+
+    [Fact]
+    public async Task ImportItemsFromCsvAsync_最大件数を超える場合_超えた件数を知らせて最大件数まで読み込む()
+    {
+        // Arrange
+        var dialog = new FakeDialogService();
+        var sut = CreateSut(dialogService: dialog);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        var csv = string.Join(
+            "\n",
+            Enumerable.Range(1, RouletteGroup.MAX_ITEM_COUNT + 2).Select(i => $"アイテム{i},1"));
+
+        // Act
+        await sut.ImportItemsFromCsvAsync(csv);
+
+        // Assert
+        Assert.Equal(RouletteGroup.MAX_ITEM_COUNT, sut.ItemCount);
+        Assert.Single(dialog.ShownMessages);
+        Assert.Contains("31 件目以降の 2 件は読み込みませんでした", dialog.ShownMessages[0]);
+    }
+
+    [Fact]
+    public async Task ImportItemsFromCsvAsync_既存アイテムがあり最大件数を超える場合_確認で超えた件数を知らせる()
+    {
+        // Arrange
+        var dialog = new FakeDialogService(confirmResult: true);
+        var sut = CreateSut(itemCountInGroup1: 1, dialogService: dialog);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        var csv = string.Join(
+            "\n",
+            Enumerable.Range(1, RouletteGroup.MAX_ITEM_COUNT + 2).Select(i => $"アイテム{i},1"));
+
+        // Act
+        await sut.ImportItemsFromCsvAsync(csv);
+
+        // Assert
+        Assert.Contains("31 件目以降の 2 件は読み込みません", dialog.LastConfirmMessage);
+        Assert.Empty(dialog.ShownMessages);
+        Assert.Equal(RouletteGroup.MAX_ITEM_COUNT, sut.ItemCount);
+    }
+
+    [Fact]
+    public async Task ExportItemsToCsv_書き出したCSVを読み込んだ場合_同じアイテムに戻る()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        fakeRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", weight: 3, groupId: 1),
+            new("アイテムB", weight: 5, groupId: 1),
+        });
+        var sut = CreateSut(customRepository: fakeRepo, dialogService: new FakeDialogService());
+        await sut.InitializeCommand.ExecuteAsync(null);
+        var originalText = sut.ItemsText;
+
+        // Act
+        var csv = sut.ExportItemsToCsv();
+        await sut.ImportItemsFromCsvAsync(csv);
+
+        // Assert
+        Assert.StartsWith("アイテム名,Weight\n", csv);
+        Assert.Equal(originalText, sut.ItemsText);
     }
 
     [Fact]

@@ -11,6 +11,7 @@ using Windows.Graphics;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace AppRoulette
 {
@@ -54,6 +55,9 @@ namespace AppRoulette
         /// <summary>ウィンドウ位置情報を管理するサービス。</summary>
         private IWindowPositionService? _positionService;
 
+        /// <summary>確認やメッセージのダイアログを表示するサービス。</summary>
+        private readonly IDialogService _dialogService;
+
         // ---------------------------------------------------------------
         // ViewModel
         // ---------------------------------------------------------------
@@ -75,6 +79,7 @@ namespace AppRoulette
         {
             InitializeComponent();
 
+            _dialogService = new ContentDialogService(() => Content?.XamlRoot);
             ViewModel = new MainViewModel(
                 new RandomService(),
                 new SqliteItemRepository(),
@@ -82,7 +87,7 @@ namespace AppRoulette
                 new SqliteAppSettingsRepository(),
                 new OneDriveFolderSyncService(),
                 new SyncTimestampStore(),
-                new ContentDialogConfirmationService(() => Content?.XamlRoot));
+                _dialogService);
 
             ViewModel.PropertyChanged += (_, e) =>
             {
@@ -819,11 +824,18 @@ namespace AppRoulette
                 }
 
                 var csv = ViewModel.ExportItemsToCsv();
-                await Windows.Storage.FileIO.WriteTextAsync(file, csv);
+                await Windows.Storage.FileIO.WriteBytesAsync(
+                    file,
+                    CsvFileEncoding.Encode(csv));
             }
             catch (Exception ex)
             {
                 ApplicationLogger.LogError("CSVエクスポート", ex);
+                await _dialogService.ShowMessageAsync(
+                    "CSV エクスポート",
+                    "CSV ファイルに保存できませんでした。"
+                    + "ファイルが Excel などのアプリで開かれていないか確認してください。"
+                    + $"\n\n詳細: {ex.Message}");
             }
         }
 
@@ -854,12 +866,18 @@ namespace AppRoulette
                     return;
                 }
 
-                var content = await Windows.Storage.FileIO.ReadTextAsync(file);
-                ViewModel.ImportItemsFromCsv(content);
+                var buffer = await Windows.Storage.FileIO.ReadBufferAsync(file);
+                var content = CsvFileEncoding.Decode(buffer.ToArray());
+                await ViewModel.ImportItemsFromCsvAsync(content);
             }
             catch (Exception ex)
             {
                 ApplicationLogger.LogError("CSVインポート", ex);
+                await _dialogService.ShowMessageAsync(
+                    "CSV インポート",
+                    "CSV ファイルを読み込めませんでした。"
+                    + "ファイルが Excel などのアプリで開かれていないか確認してください。"
+                    + $"\n\n詳細: {ex.Message}");
             }
         }
     }

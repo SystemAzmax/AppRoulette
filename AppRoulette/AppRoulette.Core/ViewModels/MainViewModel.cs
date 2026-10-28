@@ -43,7 +43,7 @@ public class MainViewModel : ObservableObject
     private readonly IAppSettingsRepository _appSettingsRepository;
     private readonly ICloudSyncService? _cloudSyncService;
     private readonly SyncTimestampStore? _syncTimestampStore;
-    private readonly IConfirmationService? _confirmationService;
+    private readonly IDialogService? _dialogService;
 
     private readonly Dictionary<int, CancellationTokenSource> _saveDebounceTokens =
         new();
@@ -414,8 +414,9 @@ public class MainViewModel : ObservableObject
     /// <param name="appSettingsRepository">アプリ設定リポジトリ。</param>
     /// <param name="cloudSyncService">クラウド同期サービス。null の場合は同期無効。</param>
     /// <param name="syncTimestampStore">同期タイムスタンプストア。null の場合は同期無効。</param>
-    /// <param name="confirmationService">
-    /// 削除操作の確認サービス。null の場合は確認せずに削除します。
+    /// <param name="dialogService">
+    /// 確認やメッセージを表示するサービス。
+    /// null の場合は確認せずに実行し、メッセージも表示しません。
     /// </param>
     public MainViewModel(
         IRandomService randomService,
@@ -424,7 +425,7 @@ public class MainViewModel : ObservableObject
         IAppSettingsRepository appSettingsRepository,
         ICloudSyncService? cloudSyncService = null,
         SyncTimestampStore? syncTimestampStore = null,
-        IConfirmationService? confirmationService = null)
+        IDialogService? dialogService = null)
     {
         _randomService = randomService;
         _itemRepository = itemRepository;
@@ -432,7 +433,7 @@ public class MainViewModel : ObservableObject
         _appSettingsRepository = appSettingsRepository;
         _cloudSyncService = cloudSyncService;
         _syncTimestampStore = syncTimestampStore;
-        _confirmationService = confirmationService;
+        _dialogService = dialogService;
         InitializeCommand = new AsyncRelayCommand(InitializeAsync);
         SpinCommand = new RelayCommand(Spin, CanSpin);
         ClearItemsCommand = new AsyncRelayCommand(ClearItemsAsync);
@@ -1383,14 +1384,35 @@ public class MainViewModel : ObservableObject
 
     /// <summary>
     /// 削除操作の実行を利用者に確認します。
-    /// 確認サービスが無い場合は、確認せずに実行を許可します。
+    /// ダイアログサービスが無い場合は、確認せずに実行を許可します。
     /// </summary>
     /// <param name="title">確認のタイトル。</param>
     /// <param name="message">確認の本文。</param>
     /// <returns>削除を実行する場合は <c>true</c>。</returns>
     private Task<bool> ConfirmDeleteAsync(string title, string message) =>
-        _confirmationService?.ConfirmAsync(title, message, DELETE_CONFIRM_BUTTON_TEXT)
+        ConfirmAsync(title, message, DELETE_CONFIRM_BUTTON_TEXT);
+
+    /// <summary>
+    /// 操作の実行を利用者に確認します。
+    /// ダイアログサービスが無い場合は、確認せずに実行を許可します。
+    /// </summary>
+    /// <param name="title">確認のタイトル。</param>
+    /// <param name="message">確認の本文。</param>
+    /// <param name="confirmButtonText">実行ボタンの表示テキスト。</param>
+    /// <returns>操作を実行する場合は <c>true</c>。</returns>
+    private Task<bool> ConfirmAsync(string title, string message, string confirmButtonText) =>
+        _dialogService?.ConfirmAsync(title, message, confirmButtonText)
         ?? Task.FromResult(true);
+
+    /// <summary>
+    /// 利用者にメッセージを表示します。
+    /// ダイアログサービスが無い場合は何もしません。
+    /// </summary>
+    /// <param name="title">メッセージのタイトル。</param>
+    /// <param name="message">メッセージの本文。</param>
+    private Task ShowMessageAsync(string title, string message) =>
+        _dialogService?.ShowMessageAsync(title, message)
+        ?? Task.CompletedTask;
 
     /// <summary>
     /// 選択中のグループの全アイテムをクリアします。
@@ -1652,6 +1674,12 @@ public class MainViewModel : ObservableObject
     /// <summary>CSVエクスポート時に付与するヘッダー行。</summary>
     private const string CSV_HEADER = "アイテム名,Weight";
 
+    /// <summary>CSVインポートで表示するダイアログのタイトル。</summary>
+    private const string CSV_IMPORT_TITLE = "CSV インポート";
+
+    /// <summary>CSVインポートでアイテムを置き換える確認の実行ボタンの表示テキスト。</summary>
+    private const string CSV_IMPORT_CONFIRM_BUTTON_TEXT = "置き換え";
+
     /// <summary>
     /// 選択中グループのアイテム一覧をCSV形式のテキストに変換します。
     /// 先頭行にはヘッダー（<see cref="CSV_HEADER"/>）を付与します。
@@ -1664,25 +1692,70 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// CSV形式のテキストを解析し、選択中グループのアイテム一覧に反映します。
+    /// CSV形式のテキストを解析し、選択中グループのアイテム一覧を置き換えます。
     /// 先頭行が <see cref="CSV_HEADER"/> と一致する場合はヘッダー行として除外します。
+    /// 既存のアイテムがある場合は置き換える前に利用者に確認し、
+    /// 読み込めるアイテムが無い場合や最大件数を超えた場合は利用者に知らせます。
     /// </summary>
     /// <param name="csvContent">インポートするCSV形式のテキスト。</param>
-    public void ImportItemsFromCsv(string csvContent)
+    public async Task ImportItemsFromCsvAsync(string csvContent)
     {
         if (SelectedGroup is null || csvContent is null)
         {
             return;
         }
 
-        var normalized = csvContent.Replace("\r\n", "\n").Replace("\r", "\n");
+        var normalized = csvContent
+            .TrimStart('﻿')
+            .Replace("\r\n", "\n")
+            .Replace("\r", "\n");
         var lines = normalized.Split('\n');
         var startIndex = lines.Length > 0
             && string.Equals(lines[0].Trim(), CSV_HEADER, StringComparison.OrdinalIgnoreCase)
             ? 1
             : 0;
+        var parsedItems = ParseItems(string.Join('\n', lines.Skip(startIndex)));
 
-        ItemsText = string.Join('\n', lines.Skip(startIndex));
+        if (parsedItems.Count == 0)
+        {
+            await ShowMessageAsync(
+                CSV_IMPORT_TITLE,
+                "読み込めるアイテムがありませんでした。"
+                + "CSV ファイルには、1 行に 1 つずつ「名前,Weight」の形式で書いてください。");
+            return;
+        }
+
+        var group = SelectedGroup;
+        var items = parsedItems.Take(RouletteGroup.MAX_ITEM_COUNT).ToList();
+        var skippedCount = parsedItems.Count - items.Count;
+        var needsConfirm = group.Items.Count > 0;
+
+        if (needsConfirm)
+        {
+            var skippedText = skippedCount > 0
+                ? $"最大 {RouletteGroup.MAX_ITEM_COUNT} 件のため、"
+                    + $"{RouletteGroup.MAX_ITEM_COUNT + 1} 件目以降の {skippedCount} 件は読み込みません。"
+                : string.Empty;
+            if (!await ConfirmAsync(
+                    "アイテムを置き換えますか？",
+                    $"「{group.DisplayName}」のアイテム {group.Items.Count} 件を、"
+                        + $"CSV ファイルのアイテム {items.Count} 件で置き換えます。{skippedText}",
+                    CSV_IMPORT_CONFIRM_BUTTON_TEXT))
+            {
+                return;
+            }
+        }
+
+        ItemsText = FormatItems(items);
+
+        // 確認で知らせていない場合は、読み込まなかった件数をここで知らせる
+        if (!needsConfirm && skippedCount > 0)
+        {
+            await ShowMessageAsync(
+                CSV_IMPORT_TITLE,
+                $"最大 {RouletteGroup.MAX_ITEM_COUNT} 件のため、"
+                    + $"{RouletteGroup.MAX_ITEM_COUNT + 1} 件目以降の {skippedCount} 件は読み込みませんでした。");
+        }
     }
 
     /// <summary>
