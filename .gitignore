@@ -4,6 +4,9 @@
 # Visual Studio の個人設定
 *.user
 
+# Visual Studio Code の個人設定
+.vscode/
+
 # ビルド出力
 [Bb]in/
 [Oo]bj/
