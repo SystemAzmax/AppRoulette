@@ -531,6 +531,21 @@
                         HorizontalContentAlignment="Center" />
                 </StackPanel>
 
+                <!-- アプリの情報 -->
+                <TextBlock
+                    Text="アプリの情報"
+                    Margin="0,8,0,0"
+                    FontSize="12"
+                    FontWeight="SemiBold" />
+                <Button
+                    Content="このアプリについて"
+                    Click="OnAboutButtonClick"
+                    Padding="8,4"
+                    CornerRadius="4"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    ToolTipService.ToolTip="アプリのバージョンなどを表示します。" />
+
             </StackPanel>
         </ScrollViewer>
     </Grid>

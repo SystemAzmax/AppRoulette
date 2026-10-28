@@ -254,6 +254,26 @@ namespace AppRoulette
         }
 
         /// <summary>
+        /// 「このアプリについて」ボタンのクリックイベントを処理します。
+        /// アプリ名・バージョン・著作権表記をダイアログで表示します。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnAboutButtonClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await _dialogService.ShowMessageAsync(
+                    $"{AppInfoProvider.GetProductName()} について",
+                    AppInfoProvider.CreateAboutMessage());
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("バージョン情報表示", ex);
+            }
+        }
+
+        /// <summary>
         /// ViewModel のアイテムテキストを下部テキストボックスに反映します。
         /// </summary>
         private void UpdateItemsTextBoxFromViewModel()
