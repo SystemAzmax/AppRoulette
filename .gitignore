@@ -1,6 +1,9 @@
 # Visual Studio の作業フォルダー
 .vs/
 
+# Visual Studio の個人設定
+*.user
+
 # ビルド出力
 [Bb]in/
 [Oo]bj/
