@@ -27,11 +27,29 @@ namespace AppRoulette
         /// <summary>1フレームのインターバル（ミリ秒）。約60fps。</summary>
         private const int TIMER_INTERVAL_MS = 16;
 
-        /// <summary>ウィンドウの既定の幅（ピクセル）。</summary>
+        /// <summary>
+        /// ウィンドウの既定の幅（表示スケール 100% のときのピクセル）。
+        /// 実際の幅は表示スケールに合わせて拡大します。
+        /// </summary>
         private const int DEFAULT_WINDOW_WIDTH = 1300;
 
-        /// <summary>ウィンドウの既定の高さ（ピクセル）。</summary>
+        /// <summary>
+        /// ウィンドウの既定の高さ（表示スケール 100% のときのピクセル）。
+        /// 実際の高さは表示スケールに合わせて拡大します。
+        /// </summary>
         private const int DEFAULT_WINDOW_HEIGHT = 850;
+
+        /// <summary>表示スケール 100% のときの DPI。</summary>
+        private const double DEFAULT_DPI = 96.0;
+
+        /// <summary>
+        /// ウィンドウがあるモニターの DPI を取得します。
+        /// 失敗した場合は 0 を返します。
+        /// </summary>
+        /// <param name="hwnd">ウィンドウのハンドル。</param>
+        /// <returns>DPI（表示スケール 100% のときは 96）。</returns>
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern uint GetDpiForWindow(IntPtr hwnd);
 
         // ---------------------------------------------------------------
         // アニメーション状態
@@ -129,10 +147,9 @@ namespace AppRoulette
 
             try
             {
-                // ウィンドウサイズを既定値に設定
+                // 表示スケールに合わせた既定のサイズで、画面の中央に配置
                 ExtendsContentIntoTitleBar = false;
-                AppWindow.Resize(new Windows.Graphics.SizeInt32(
-                    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT));
+                ApplyDefaultWindowBounds(keepPosition: false);
                 UpdateGroupNameUnsavedVisualState();
 
                 // ウィンドウ位置情報を読み込んで、保存されているなら適用
@@ -213,7 +230,7 @@ namespace AppRoulette
 
         /// <summary>
         /// ウィンドウサイズをリセットボタンのクリックイベントを処理します。
-        /// ウィンドウのサイズを既定値（1300×850）に戻します。
+        /// ウィンドウのサイズを、表示スケールに合わせた既定のサイズに戻します。
         /// </summary>
         /// <param name="sender">イベント発生元。</param>
         /// <param name="e">イベント引数。</param>
@@ -222,13 +239,49 @@ namespace AppRoulette
         {
             try
             {
-                AppWindow.Resize(new Windows.Graphics.SizeInt32(
-                    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT));
+                ApplyDefaultWindowBounds(keepPosition: true);
             }
             catch (Exception ex)
             {
                 ApplicationLogger.LogError("ウィンドウサイズリセット", ex);
             }
+        }
+
+        /// <summary>
+        /// ウィンドウを、表示スケールに合わせた既定のサイズにします。
+        /// 既定のサイズが画面の作業領域より大きい場合は、作業領域に収めます。
+        /// </summary>
+        /// <param name="keepPosition">
+        /// 現在の位置を保つ場合は <c>true</c>（画面からはみ出す場合だけずらす）。
+        /// 作業領域の中央に置く場合は <c>false</c>。
+        /// </param>
+        private void ApplyDefaultWindowBounds(bool keepPosition)
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            var scale = GetDpiForWindow(hwnd) / DEFAULT_DPI;
+            var workArea = DisplayArea
+                .GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary)
+                .WorkArea;
+
+            var bounds = WindowSizeCalculator.CalculateDefaultBounds(
+                DEFAULT_WINDOW_WIDTH,
+                DEFAULT_WINDOW_HEIGHT,
+                scale,
+                new WindowPositionInfo
+                {
+                    X = workArea.X,
+                    Y = workArea.Y,
+                    Width = workArea.Width,
+                    Height = workArea.Height,
+                },
+                keepPosition ? AppWindow.Position.X : null,
+                keepPosition ? AppWindow.Position.Y : null);
+
+            AppWindow.MoveAndResize(new RectInt32(
+                bounds.X,
+                bounds.Y,
+                bounds.Width,
+                bounds.Height));
         }
 
         /// <summary>
