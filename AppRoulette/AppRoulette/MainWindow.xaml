@@ -227,7 +227,11 @@
         <ScrollViewer
             Grid.Column="4"
             VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="8">
+            <!--
+                スクロールバーは内容の上に重ねて表示されるため、
+                表示されていないときも右端にスクロールバーの幅を空けて、ボタンにかからないようにする。
+            -->
+            <StackPanel Spacing="8" Padding="0,0,16,0">
 
                 <!-- グループ ComboBox + リスト位置 + アイテム数 + クリア -->
                 <StackPanel
@@ -320,200 +324,274 @@
                     Foreground="DarkOrange"
                     Opacity="0" />
 
-                <!-- グループ操作 -->
-                <StackPanel
-                    Orientation="Horizontal"
-                    Spacing="8">
+                <!-- グループ操作（2 つ並ぶボタンは、幅を半分ずつ分ける） -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <Button
+                        Grid.Column="0"
                         Content="リストを追加"
                         Command="{x:Bind ViewModel.AddGroupCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="140"
+                        HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
                     <Button
+                        Grid.Column="2"
                         Content="リストを削除"
                         Command="{x:Bind ViewModel.DeleteGroupCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="140"
+                        HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
-                </StackPanel>
-                <StackPanel
-                    Orientation="Horizontal"
-                    Spacing="8">
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <Button
+                        Grid.Column="0"
                         Content="リストを複製"
                         Command="{x:Bind ViewModel.DuplicateGroupCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="140"
+                        HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
-                </StackPanel>
-                <StackPanel
-                    Orientation="Horizontal"
-                    Spacing="8">
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <Button
+                        Grid.Column="0"
                         Content="リストを上へ"
                         Command="{x:Bind ViewModel.MoveGroupUpCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="140"
+                        HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
                     <Button
+                        Grid.Column="2"
                         Content="リストを下へ"
                         Command="{x:Bind ViewModel.MoveGroupDownCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="140"
+                        HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
-                </StackPanel>
+                </Grid>
 
-                <!-- 選択アイテム操作 -->
+                <!-- アイテム操作（選択アイテム・一覧全体） -->
                 <TextBlock
-                    Text="選択アイテム操作"
+                    Text="アイテム操作"
                     Margin="0,8,0,0"
                     FontSize="12"
                     FontWeight="SemiBold" />
-                <StackPanel
-                    Orientation="Horizontal"
-                    Spacing="8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <Button
+                        Grid.Column="0"
                         Content="アイテム追加"
                         Command="{x:Bind ViewModel.AddItemRowCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="108"
+                        HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
                     <Button
+                        Grid.Column="2"
                         Content="選択削除"
                         Command="{x:Bind ViewModel.DeleteSelectedItemRowCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="108"
+                        HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
-                </StackPanel>
-                <StackPanel
-                    Orientation="Horizontal"
-                    Spacing="8">
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <Button
+                        Grid.Column="0"
                         Content="選択を上へ"
                         Command="{x:Bind ViewModel.MoveItemRowUpCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="108"
+                        HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
                     <Button
+                        Grid.Column="2"
                         Content="選択を下へ"
                         Command="{x:Bind ViewModel.MoveItemRowDownCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="108"
+                        HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
-                </StackPanel>
-
-                <!-- 一覧全体操作 -->
-                <TextBlock
-                    Text="一覧全体"
-                    Margin="0,8,0,0"
-                    FontSize="12"
-                    FontWeight="SemiBold" />
-                <StackPanel
-                    Orientation="Horizontal"
-                    Spacing="8">
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <Button
+                        Grid.Column="0"
                         Content="一覧ソート"
                         Command="{x:Bind ViewModel.SortItemsCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="132"
+                        HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
                     <Button
+                        Grid.Column="2"
                         Content="一覧シャッフル"
                         Command="{x:Bind ViewModel.ShuffleItemsCommand}"
                         Padding="8,4"
                         CornerRadius="4"
-                        MinWidth="132"
-                        HorizontalContentAlignment="Center" />
-                </StackPanel>
-                <StackPanel
-                    Orientation="Horizontal"
-                    Spacing="8">
-                    <Button
-                        Content="CSVエクスポート"
-                        Click="OnExportCsvButtonClick"
-                        Padding="8,4"
-                        CornerRadius="4"
-                        MinWidth="132"
-                        HorizontalContentAlignment="Center" />
-                    <Button
-                        Content="CSVインポート"
-                        Click="OnImportCsvButtonClick"
-                        Padding="8,4"
-                        CornerRadius="4"
-                        MinWidth="132"
-                        HorizontalContentAlignment="Center" />
-                </StackPanel>
-
-                <!-- 全リストのバックアップ -->
-                <TextBlock
-                    Text="バックアップ（全リスト）"
-                    Margin="0,8,0,0"
-                    FontSize="12"
-                    FontWeight="SemiBold" />
-                <StackPanel
-                    Orientation="Horizontal"
-                    Spacing="8">
-                    <Button
-                        Content="バックアップ保存"
-                        Click="OnSaveBackupButtonClick"
-                        Padding="8,4"
-                        CornerRadius="4"
-                        MinWidth="132"
-                        HorizontalContentAlignment="Center"
-                        ToolTipService.ToolTip="すべてのリストとアイテムを 1 つのファイルに保存します。" />
-                    <Button
-                        Content="バックアップ復元"
-                        Click="OnRestoreBackupButtonClick"
-                        Padding="8,4"
-                        CornerRadius="4"
-                        MinWidth="132"
-                        HorizontalContentAlignment="Center"
-                        ToolTipService.ToolTip="バックアップファイルから、すべてのリストとアイテムを復元します。今のデータは置き換わります。" />
-                </StackPanel>
-
-                <!-- OneDrive 同期 -->
-                <TextBlock
-                    Text="OneDrive 同期"
-                    Margin="0,8,0,0"
-                    FontSize="12"
-                    FontWeight="SemiBold"
-                    Visibility="{x:Bind ViewModel.IsSyncAvailable}" />
-                <StackPanel
-                    Orientation="Vertical"
-                    Spacing="8"
-                    Visibility="{x:Bind ViewModel.IsSyncAvailable}">
-                    <Button
-                        Content="今すぐ同期"
-                        Command="{x:Bind ViewModel.SyncAllCommand}"
-                        Padding="8,4"
-                        CornerRadius="4"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
+                </Grid>
+
+                <!--
+                    操作パネルのタブ（データ / その他）。
+                    中央列の「詳細 / テキスト」タブと同じく、ボタンと下線の Border で作る。
+                -->
+                <Border
+                    Margin="0,8,0,0"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1">
+                    <StackPanel Orientation="Horizontal" Spacing="0">
+                        <Button
+                            x:Name="DataTabButton"
+                            Content="データ"
+                            Click="OnDataTabButtonClick"
+                            Padding="16,8"
+                            CornerRadius="0"
+                            Background="Transparent"
+                            BorderThickness="0" />
+                        <Button
+                            x:Name="OtherTabButton"
+                            Content="その他"
+                            Click="OnOtherTabButtonClick"
+                            Padding="16,8"
+                            CornerRadius="0"
+                            Background="Transparent"
+                            BorderThickness="0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- データタブの内容 -->
+                <StackPanel
+                    x:Name="DataTabPanel"
+                    Spacing="8">
+
+                    <!-- CSV（選択中のリスト） -->
                     <TextBlock
-                        Text="{x:Bind ViewModel.SyncStatusText, Mode=OneWay}"
-                        FontSize="11" />
+                        Text="CSV（選択中のリスト）"
+                        FontSize="12"
+                        FontWeight="SemiBold" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button
+                            Grid.Column="0"
+                            Content="CSVエクスポート"
+                            Click="OnExportCsvButtonClick"
+                            Padding="8,4"
+                            CornerRadius="4"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center" />
+                        <Button
+                            Grid.Column="2"
+                            Content="CSVインポート"
+                            Click="OnImportCsvButtonClick"
+                            Padding="8,4"
+                            CornerRadius="4"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center" />
+                    </Grid>
+
+                    <!-- 全リストのバックアップ -->
+                    <TextBlock
+                        Text="バックアップ（全リスト）"
+                        Margin="0,8,0,0"
+                        FontSize="12"
+                        FontWeight="SemiBold" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button
+                            Grid.Column="0"
+                            Content="バックアップ保存"
+                            Click="OnSaveBackupButtonClick"
+                            Padding="8,4"
+                            CornerRadius="4"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            ToolTipService.ToolTip="すべてのリストとアイテムを 1 つのファイルに保存します。" />
+                        <Button
+                            Grid.Column="2"
+                            Content="バックアップ復元"
+                            Click="OnRestoreBackupButtonClick"
+                            Padding="8,4"
+                            CornerRadius="4"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            ToolTipService.ToolTip="バックアップファイルから、すべてのリストとアイテムを復元します。今のデータは置き換わります。" />
+                    </Grid>
+
+                    <!-- OneDrive 同期 -->
+                    <TextBlock
+                        Text="OneDrive 同期"
+                        Margin="0,8,0,0"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Visibility="{x:Bind ViewModel.IsSyncAvailable}" />
+                    <StackPanel
+                        Orientation="Vertical"
+                        Spacing="8"
+                        Visibility="{x:Bind ViewModel.IsSyncAvailable}">
+                        <Button
+                            Content="今すぐ同期"
+                            Command="{x:Bind ViewModel.SyncAllCommand}"
+                            Padding="8,4"
+                            CornerRadius="4"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.SyncStatusText, Mode=OneWay}"
+                            FontSize="11" />
+                    </StackPanel>
                 </StackPanel>
 
-                <!-- ウィンドウ操作 -->
-                <TextBlock
-                    Text="ウィンドウ操作"
-                    Margin="0,8,0,0"
-                    FontSize="12"
-                    FontWeight="SemiBold" />
+                <!-- その他タブの内容 -->
                 <StackPanel
-                    Orientation="Vertical"
-                    Spacing="8">
+                    x:Name="OtherTabPanel"
+                    Spacing="8"
+                    Visibility="Collapsed">
+
+                    <!-- ウィンドウ操作 -->
+                    <TextBlock
+                        Text="ウィンドウ操作"
+                        FontSize="12"
+                        FontWeight="SemiBold" />
                     <Button
                         Content="ウィンドウサイズをリセット"
                         Click="OnResetWindowSizeButtonClick"
@@ -529,17 +607,13 @@
                         CornerRadius="4"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center" />
-                </StackPanel>
 
-                <!-- アプリの情報 -->
-                <TextBlock
-                    Text="アプリの情報"
-                    Margin="0,8,0,0"
-                    FontSize="12"
-                    FontWeight="SemiBold" />
-                <StackPanel
-                    Orientation="Vertical"
-                    Spacing="8">
+                    <!-- アプリの情報 -->
+                    <TextBlock
+                        Text="アプリの情報"
+                        Margin="0,8,0,0"
+                        FontSize="12"
+                        FontWeight="SemiBold" />
                     <Button
                         Content="このアプリについて"
                         Click="OnAboutButtonClick"

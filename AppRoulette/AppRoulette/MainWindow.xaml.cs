@@ -336,6 +336,7 @@ namespace AppRoulette
         {
             await ViewModel.InitializeCommand.ExecuteAsync(null);
             UpdateItemViewTabVisualState(isDetailSelected: true);
+            UpdateOperationTabVisualState(isDataSelected: true);
         }
 
         /// <summary>
@@ -401,25 +402,82 @@ namespace AppRoulette
                 return;
             }
 
-            DetailTabPanel.Visibility = isDetailSelected
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-            TextTabPanel.Visibility = isDetailSelected
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+            ApplyTabVisualState(
+                isDetailSelected ? DetailTabButton : TextTabButton,
+                isDetailSelected ? TextTabButton : DetailTabButton,
+                isDetailSelected ? DetailTabPanel : TextTabPanel,
+                isDetailSelected ? TextTabPanel : DetailTabPanel);
+        }
 
-            var selectedBrush = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
-            var unselectedBrush = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+        // ---------------------------------------------------------------
+        // 操作パネルのタブ（データ / その他）切り替え
+        // ---------------------------------------------------------------
 
-            DetailTabButton.Foreground = isDetailSelected ? selectedBrush : unselectedBrush;
-            DetailTabButton.FontWeight = isDetailSelected
-                ? Microsoft.UI.Text.FontWeights.SemiBold
-                : Microsoft.UI.Text.FontWeights.Normal;
+        /// <summary>
+        /// 「データ」タブボタンのクリックイベントハンドラー。
+        /// CSV・バックアップ・同期の操作を表示します。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnDataTabButtonClick(object sender, RoutedEventArgs e)
+        {
+            UpdateOperationTabVisualState(isDataSelected: true);
+        }
 
-            TextTabButton.Foreground = isDetailSelected ? unselectedBrush : selectedBrush;
-            TextTabButton.FontWeight = isDetailSelected
-                ? Microsoft.UI.Text.FontWeights.Normal
-                : Microsoft.UI.Text.FontWeights.SemiBold;
+        /// <summary>
+        /// 「その他」タブボタンのクリックイベントハンドラー。
+        /// ウィンドウ操作とアプリの情報を表示します。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnOtherTabButtonClick(object sender, RoutedEventArgs e)
+        {
+            UpdateOperationTabVisualState(isDataSelected: false);
+        }
+
+        /// <summary>
+        /// 操作パネルのタブの表示状態（パネルの表示切り替え・ボタンの選択状態）を更新します。
+        /// </summary>
+        /// <param name="isDataSelected">「データ」タブを選択状態にする場合は <c>true</c>。</param>
+        private void UpdateOperationTabVisualState(bool isDataSelected)
+        {
+            if (DataTabPanel is null || OtherTabPanel is null
+                || DataTabButton is null || OtherTabButton is null)
+            {
+                return;
+            }
+
+            ApplyTabVisualState(
+                isDataSelected ? DataTabButton : OtherTabButton,
+                isDataSelected ? OtherTabButton : DataTabButton,
+                isDataSelected ? DataTabPanel : OtherTabPanel,
+                isDataSelected ? OtherTabPanel : DataTabPanel);
+        }
+
+        /// <summary>
+        /// ボタンで作ったタブについて、選択したタブのパネルを表示し、
+        /// タブボタンの文字色と太さを選択状態に合わせて更新します。
+        /// </summary>
+        /// <param name="selectedButton">選択したタブのボタン。</param>
+        /// <param name="unselectedButton">選択していないタブのボタン。</param>
+        /// <param name="selectedPanel">選択したタブのパネル。</param>
+        /// <param name="unselectedPanel">選択していないタブのパネル。</param>
+        private static void ApplyTabVisualState(
+            Button selectedButton,
+            Button unselectedButton,
+            UIElement selectedPanel,
+            UIElement unselectedPanel)
+        {
+            selectedPanel.Visibility = Visibility.Visible;
+            unselectedPanel.Visibility = Visibility.Collapsed;
+
+            selectedButton.Foreground =
+                (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+            selectedButton.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+
+            unselectedButton.Foreground =
+                (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+            unselectedButton.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
         }
 
         // ---------------------------------------------------------------
