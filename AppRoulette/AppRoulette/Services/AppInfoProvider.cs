@@ -10,6 +10,16 @@ namespace AppRoulette.Services
         /// <summary>アプリ名を取得できない場合に使う名前。</summary>
         private const string DEFAULT_PRODUCT_NAME = "AppRoulette";
 
+        /// <summary>使用しているソフトウェアのライセンス表示のファイル名。</summary>
+        private const string THIRD_PARTY_NOTICES_FILE_NAME = "ThirdPartyNotices.txt";
+
+        /// <summary>
+        /// 使用しているソフトウェアのライセンス表示のファイルのパスを取得します。
+        /// ファイルはアプリと同じフォルダーに配置されます。
+        /// </summary>
+        public static string ThirdPartyNoticesPath =>
+            Path.Combine(AppContext.BaseDirectory, THIRD_PARTY_NOTICES_FILE_NAME);
+
         /// <summary>
         /// アプリ名を取得します。
         /// </summary>

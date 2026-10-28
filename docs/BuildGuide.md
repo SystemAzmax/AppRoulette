@@ -30,6 +30,19 @@
 - ストアに提出するパッケージは、4 つ目の数字（リビジョン）を 0 にする必要があります。
 - 画面では、4 つ目の数字が 0 のときは省いて `1.1.0` のように表示します。
 
+## ライセンス表示の更新
+
+「ライセンス情報」ボタンで開く `AppRoulette\ThirdPartyNotices.txt` は、
+アプリと一緒に配布するソフトウェアのライセンスを、原文のまま並べたものです。
+NuGet パッケージを追加・更新したときや、.NET のランタイムを更新したときは、このファイルも更新してください。
+
+- 各節の内容は、`%USERPROFILE%\.nuget\packages\<パッケージ名>\<バージョン>\` にある
+  `LICENSE.txt`、`License.md`、`NOTICE.txt`、`ThirdPartyNotices.txt` などから取っています。
+  .NET の節は `microsoft.netcore.app.runtime.win-x64` の `LICENSE.TXT` と `THIRD-PARTY-NOTICES.TXT` です。
+- パッケージにライセンスファイルが無い Microsoft.Data.Sqlite と SQLitePCLRaw は、
+  それぞれのリポジトリ（dotnet/efcore、ericsink/SQLitePCL.raw）の LICENSE から取っています。
+- 冒頭の一覧に書いたバージョンも、合わせて書き換えます。
+
 ## ストア版のビルド
 
 1. ソリューション エクスプローラーで **AppRoulette (Package)** を右クリックし、

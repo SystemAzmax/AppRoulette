@@ -1,3 +1,4 @@
+using System.Reflection;
 using AppRoulette.Services;
 
 namespace AppRoulette.Tests.Services;
@@ -29,12 +30,31 @@ public class AppInfoProviderTests
     [Fact]
     public void CreateAboutMessage_パッケージなしで実行した場合_exe版としてアプリ名と著作権表記を含む()
     {
+        // Arrange
+        var copyright = typeof(AppInfoProvider).Assembly
+            .GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright;
+
         // Act
         var message = AppInfoProvider.CreateAboutMessage();
 
         // Assert
+        Assert.False(string.IsNullOrWhiteSpace(copyright));
         Assert.StartsWith("AppRoulette\nバージョン ", message);
         Assert.Contains("（exe 版）", message);
-        Assert.Contains("© 2026 azmax", message);
+        Assert.EndsWith($"\n\n{copyright}", message);
+    }
+
+    /// <summary>
+    /// ライセンス表示のファイルが、アプリと同じフォルダーに出力されていることを検証します。
+    /// </summary>
+    [Fact]
+    public void ThirdPartyNoticesPath_ビルド出力_ライセンス表示のファイルがある()
+    {
+        // Act
+        var path = AppInfoProvider.ThirdPartyNoticesPath;
+
+        // Assert
+        Assert.True(File.Exists(path), $"ファイルがありません: {path}");
+        Assert.Contains("SQLitePCLRaw", File.ReadAllText(path));
     }
 }

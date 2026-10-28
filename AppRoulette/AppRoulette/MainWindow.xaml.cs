@@ -274,6 +274,30 @@ namespace AppRoulette
         }
 
         /// <summary>
+        /// 「ライセンス情報」ボタンのクリックイベントを処理します。
+        /// 使用しているソフトウェアのライセンス表示のファイルを、既定のアプリで開きます。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnThirdPartyNoticesButtonClick(object sender, RoutedEventArgs e)
+        {
+            var path = AppInfoProvider.ThirdPartyNoticesPath;
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("ライセンス情報表示", ex);
+                await _dialogService.ShowMessageAsync(
+                    "ライセンス情報",
+                    "ライセンス情報のファイルを開けませんでした。"
+                    + $"\n\nファイル: {path}\n詳細: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// ViewModel のアイテムテキストを下部テキストボックスに反映します。
         /// </summary>
         private void UpdateItemsTextBoxFromViewModel()
