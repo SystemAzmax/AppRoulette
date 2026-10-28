@@ -1,6 +1,6 @@
 # AppRoulette
 
-A modern Windows desktop application for managing and running roulette selections. Built with WinUI 3 and .NET 8, AppRoulette provides an intuitive interface for creating roulette groups, adding items, and spinning the roulette wheel to make random selections.
+A modern Windows desktop application for managing and running roulette selections. Built with WinUI 3 and .NET 10, AppRoulette provides an intuitive interface for creating roulette groups, adding items, and spinning the roulette wheel to make random selections.
 
 ## Features
 
@@ -14,7 +14,7 @@ A modern Windows desktop application for managing and running roulette selection
 
 ## Technology Stack
 
-- **Framework**: .NET 8
+- **Framework**: .NET 10
 - **UI Framework**: WinUI 3 (Windows App SDK)
 - **Architecture**: MVVM (Model-View-ViewModel)
 - **Data Persistence**: JSON-based file storage
@@ -66,8 +66,8 @@ AppRoulette/
 
 ### Prerequisites
 - Windows 10/11 or later
-- .NET 8 SDK
-- Visual Studio 2022 or later (Community Edition supported)
+- .NET 10 SDK
+- Visual Studio 2026 or later (Community Edition supported)
 
 ### Building
 
@@ -179,4 +179,4 @@ For issues, questions, or suggestions, please visit the [GitHub Issues](https://
 
 ---
 
-Built with ❤️ using .NET 8 and WinUI 3
+Built with ❤️ using .NET 10 and WinUI 3

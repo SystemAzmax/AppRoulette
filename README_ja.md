@@ -1,6 +1,6 @@
 # AppRoulette
 
-Windows デスクトップ用のルーレット選択アプリケーション。WinUI 3 と .NET 8 で構築されており、ルーレットグループの作成・編集やアイテムの追加、ルーレットの実行などの機能を提供します。
+Windows デスクトップ用のルーレット選択アプリケーション。WinUI 3 と .NET 10 で構築されており、ルーレットグループの作成・編集やアイテムの追加、ルーレットの実行などの機能を提供します。
 
 ## 機能
 
@@ -14,7 +14,7 @@ Windows デスクトップ用のルーレット選択アプリケーション。
 
 ## 技術スタック
 
-- **フレームワーク**: .NET 8
+- **フレームワーク**: .NET 10
 - **UI フレームワーク**: WinUI 3 (Windows App SDK)
 - **アーキテクチャ**: MVVM (Model-View-ViewModel)
 - **データ永続化**: JSON ベースのファイルストレージ
@@ -66,8 +66,8 @@ AppRoulette/
 
 ### 前提条件
 - Windows 10/11 以降
-- .NET 8 SDK
-- Visual Studio 2022 以降（Community Edition 対応）
+- .NET 10 SDK
+- Visual Studio 2026 以降（Community Edition 対応）
 
 ### ビルド
 
@@ -179,4 +179,4 @@ dotnet test
 
 ---
 
-❤️ .NET 8 と WinUI 3 で構築
+❤️ .NET 10 と WinUI 3 で構築
