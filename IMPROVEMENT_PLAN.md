@@ -233,7 +233,7 @@ AppRoulette は WinUI 3 / .NET 10 の MVVM 構成で、SQLite にアイテムを
 実装状況（2026-10-28 確認）:
 
 - 実装済み: 抽選（`MainViewModel.Spin`、`RandomService.SelectByWeight`）と停止角度の計算（`CalcTargetAngle`）を ViewModel 側へ移し、アニメーションの状態は `SpinAnimationViewModel` に分けた。Model・Service・ViewModel は `AppRoulette.Core` プロジェクトへ分離した。
-- 未実装: ダイアログ表示のサービス化（結果ダイアログは `MainWindow` で作っている）。
+- 一部実装: ダイアログ表示のサービス化。削除の確認ダイアログは `IConfirmationService`（実装は `ContentDialogConfirmationService`）でサービス化した。結果ダイアログは `MainWindow` で作っている。
 - 未実装: ウィンドウ位置保存の App 側への移動（`MainWindow` のコンストラクターで処理している）。
 - 未実装: 簡易 DI（`MainWindow` が `MainViewModel` と各サービスを直接生成している）。
 
@@ -336,7 +336,7 @@ AppRoulette は WinUI 3 / .NET 10 の MVVM 構成で、SQLite にアイテムを
 1. Weight の入力説明を UI に追加する。（実装済み: 表の見出しと入力欄のツールチップ、テキスト入力欄のプレースホルダー）
 2. 入力バリデーションを追加する。（実装済み: Weight を 1～5 に制限する）
 3. 最大件数・重複・保存状態を表示する。（実装済み）
-4. クリア操作に確認ダイアログを追加する。
+4. クリア操作に確認ダイアログを追加する。（実装済み: 「クリア」と「リストを削除」の前に確認する）
 
 ### フェーズ3: グループ管理
 

@@ -35,12 +35,15 @@ public class MainViewModel : ObservableObject
 
     private const string SYNC_STATUS_FAILED = "同期失敗";
 
+    private const string DELETE_CONFIRM_BUTTON_TEXT = "削除";
+
     private readonly IRandomService _randomService;
     private readonly IItemRepository _itemRepository;
     private readonly IGroupRepository _groupRepository;
     private readonly IAppSettingsRepository _appSettingsRepository;
     private readonly ICloudSyncService? _cloudSyncService;
     private readonly SyncTimestampStore? _syncTimestampStore;
+    private readonly IConfirmationService? _confirmationService;
 
     private readonly Dictionary<int, CancellationTokenSource> _saveDebounceTokens =
         new();
@@ -326,9 +329,9 @@ public class MainViewModel : ObservableObject
     public IRelayCommand SpinCommand { get; }
 
     /// <summary>
-    /// 選択中のグループの全アイテムをクリアするコマンド。
+    /// 利用者に確認したうえで、選択中のグループの全アイテムをクリアするコマンド。
     /// </summary>
-    public IRelayCommand ClearItemsCommand { get; }
+    public IAsyncRelayCommand ClearItemsCommand { get; }
 
     /// <summary>
     /// 選択中のグループ名を変更するコマンド。
@@ -411,13 +414,17 @@ public class MainViewModel : ObservableObject
     /// <param name="appSettingsRepository">アプリ設定リポジトリ。</param>
     /// <param name="cloudSyncService">クラウド同期サービス。null の場合は同期無効。</param>
     /// <param name="syncTimestampStore">同期タイムスタンプストア。null の場合は同期無効。</param>
+    /// <param name="confirmationService">
+    /// 削除操作の確認サービス。null の場合は確認せずに削除します。
+    /// </param>
     public MainViewModel(
         IRandomService randomService,
         IItemRepository itemRepository,
         IGroupRepository groupRepository,
         IAppSettingsRepository appSettingsRepository,
         ICloudSyncService? cloudSyncService = null,
-        SyncTimestampStore? syncTimestampStore = null)
+        SyncTimestampStore? syncTimestampStore = null,
+        IConfirmationService? confirmationService = null)
     {
         _randomService = randomService;
         _itemRepository = itemRepository;
@@ -425,9 +432,10 @@ public class MainViewModel : ObservableObject
         _appSettingsRepository = appSettingsRepository;
         _cloudSyncService = cloudSyncService;
         _syncTimestampStore = syncTimestampStore;
+        _confirmationService = confirmationService;
         InitializeCommand = new AsyncRelayCommand(InitializeAsync);
         SpinCommand = new RelayCommand(Spin, CanSpin);
-        ClearItemsCommand = new RelayCommand(ClearItems);
+        ClearItemsCommand = new AsyncRelayCommand(ClearItemsAsync);
         RenameGroupCommand = new AsyncRelayCommand(RenameGroupAsync, CanRenameGroup);
         ResetGroupNameCommand = new AsyncRelayCommand(
             ResetGroupNameAsync,
@@ -862,7 +870,7 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 選択中のグループを削除します。
+    /// 利用者に確認したうえで、選択中のグループを削除します。
     /// </summary>
     private async Task DeleteGroupAsync()
     {
@@ -871,10 +879,20 @@ public class MainViewModel : ObservableObject
             return;
         }
 
+        var group = SelectedGroup;
+        var itemCountText = group.Items.Count > 0
+            ? $"と、そのアイテム {group.Items.Count} 件"
+            : string.Empty;
+        if (!await ConfirmDeleteAsync(
+                "リストを削除しますか？",
+                $"「{group.DisplayName}」{itemCountText}を削除します。この操作は元に戻せません。"))
+        {
+            return;
+        }
+
         try
         {
             SaveStatusText = SAVE_STATUS_SAVING;
-            var group = SelectedGroup;
             var currentIndex = GroupList.IndexOf(group);
 
             await _groupRepository.DeleteGroupAsync(group.Id);
@@ -1339,6 +1357,40 @@ public class MainViewModel : ObservableObject
            IsEnabled = item.IsEnabled,
            CanUnchecked = item.CanUnchecked,
        };
+
+    /// <summary>
+    /// 利用者に確認したうえで、選択中のグループの全アイテムをクリアします。
+    /// アイテムが無い場合は確認しません。
+    /// </summary>
+    private async Task ClearItemsAsync()
+    {
+        if (SelectedGroup is null)
+        {
+            return;
+        }
+
+        var group = SelectedGroup;
+        if (group.Items.Count > 0
+            && !await ConfirmDeleteAsync(
+                "アイテムをすべて削除しますか？",
+                $"「{group.DisplayName}」のアイテム {group.Items.Count} 件をすべて削除します。この操作は元に戻せません。"))
+        {
+            return;
+        }
+
+        ClearItems();
+    }
+
+    /// <summary>
+    /// 削除操作の実行を利用者に確認します。
+    /// 確認サービスが無い場合は、確認せずに実行を許可します。
+    /// </summary>
+    /// <param name="title">確認のタイトル。</param>
+    /// <param name="message">確認の本文。</param>
+    /// <returns>削除を実行する場合は <c>true</c>。</returns>
+    private Task<bool> ConfirmDeleteAsync(string title, string message) =>
+        _confirmationService?.ConfirmAsync(title, message, DELETE_CONFIRM_BUTTON_TEXT)
+        ?? Task.FromResult(true);
 
     /// <summary>
     /// 選択中のグループの全アイテムをクリアします。

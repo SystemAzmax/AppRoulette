@@ -81,7 +81,8 @@ namespace AppRoulette
                 new SqliteGroupRepository(),
                 new SqliteAppSettingsRepository(),
                 new OneDriveFolderSyncService(),
-                new SyncTimestampStore());
+                new SyncTimestampStore(),
+                new ContentDialogConfirmationService(() => Content?.XamlRoot));
 
             ViewModel.PropertyChanged += (_, e) =>
             {

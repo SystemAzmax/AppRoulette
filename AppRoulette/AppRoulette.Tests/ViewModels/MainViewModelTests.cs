@@ -48,7 +48,8 @@ public class MainViewModelTests
         int itemCountInGroup1 = 0,
         FakeItemRepository? customRepository = null,
         FakeGroupRepository? customGroupRepository = null,
-        FakeAppSettingsRepository? customSettingsRepository = null)
+        FakeAppSettingsRepository? customSettingsRepository = null,
+        FakeConfirmationService? confirmationService = null)
     {
         FakeItemRepository fakeRepo = customRepository ?? new FakeItemRepository();
         FakeGroupRepository fakeGroupRepo = customGroupRepository ?? new FakeGroupRepository();
@@ -67,7 +68,8 @@ public class MainViewModelTests
             fakeRandom ?? new FakeRandomService(0),
             fakeRepo,
             fakeGroupRepo,
-            fakeSettingsRepository);
+            fakeSettingsRepository,
+            confirmationService: confirmationService);
     }
 
     // ---------------------------------------------------------------
@@ -366,6 +368,144 @@ public class MainViewModelTests
         Assert.Empty(items);
         Assert.Equal(8, restartedSut.GroupList.Count);
         Assert.DoesNotContain(restartedSut.GroupList, g => g.Id == 1);
+    }
+
+    [Fact]
+    public async Task DeleteGroupCommand_確認でキャンセルした場合_グループとアイテムを削除しない()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var fakeItemRepo = new FakeItemRepository();
+        fakeItemRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", groupId: 1),
+        });
+        var confirmation = new FakeConfirmationService(result: false);
+        var sut = CreateSut(
+            customRepository: fakeItemRepo,
+            customGroupRepository: fakeGroupRepo,
+            confirmationService: confirmation);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.DeleteGroupCommand.ExecuteAsync(null);
+
+        var items = await fakeItemRepo.GetItemsByGroupAsync(1);
+        var restartedSut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(1, confirmation.CallCount);
+        Assert.Equal(9, sut.GroupList.Count);
+        Assert.Equal(1, sut.SelectedGroup?.Id);
+        Assert.Single(items);
+        Assert.Contains(restartedSut.GroupList, g => g.Id == 1);
+    }
+
+    [Fact]
+    public async Task DeleteGroupCommand_確認で削除を選んだ場合_リスト名とアイテム数を示して削除する()
+    {
+        // Arrange
+        var fakeItemRepo = new FakeItemRepository();
+        fakeItemRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", groupId: 1),
+            new("アイテムB", groupId: 1),
+        });
+        var confirmation = new FakeConfirmationService(result: true);
+        var sut = CreateSut(
+            customRepository: fakeItemRepo,
+            confirmationService: confirmation);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.DeleteGroupCommand.ExecuteAsync(null);
+
+        var items = await fakeItemRepo.GetItemsByGroupAsync(1);
+
+        // Assert
+        Assert.Equal(1, confirmation.CallCount);
+        Assert.Contains("「Roulette1」", confirmation.LastMessage);
+        Assert.Contains("2 件", confirmation.LastMessage);
+        Assert.Equal(8, sut.GroupList.Count);
+        Assert.Empty(items);
+    }
+
+    [Fact]
+    public async Task ClearItemsCommand_確認でキャンセルした場合_アイテムを削除しない()
+    {
+        // Arrange
+        var confirmation = new FakeConfirmationService(result: false);
+        var fakeItemRepo = new FakeItemRepository();
+        fakeItemRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", groupId: 1),
+            new("アイテムB", groupId: 1),
+            new("アイテムC", groupId: 1),
+        });
+        var sut = CreateSut(
+            customRepository: fakeItemRepo,
+            confirmationService: confirmation);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.ClearItemsCommand.ExecuteAsync(null);
+        await Task.Delay(100);
+
+        var items = await fakeItemRepo.GetItemsByGroupAsync(1);
+
+        // Assert
+        Assert.Equal(1, confirmation.CallCount);
+        Assert.Equal(3, sut.ItemCount);
+        Assert.Equal(3, sut.EditableItems.Count);
+        Assert.Equal(3, items.Count);
+    }
+
+    [Fact]
+    public async Task ClearItemsCommand_確認で削除を選んだ場合_アイテム数を示して削除する()
+    {
+        // Arrange
+        var confirmation = new FakeConfirmationService(result: true);
+        var fakeItemRepo = new FakeItemRepository();
+        fakeItemRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", groupId: 1),
+            new("アイテムB", groupId: 1),
+            new("アイテムC", groupId: 1),
+        });
+        var sut = CreateSut(
+            customRepository: fakeItemRepo,
+            confirmationService: confirmation);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.ClearItemsCommand.ExecuteAsync(null);
+        await Task.Delay(100);
+
+        var items = await fakeItemRepo.GetItemsByGroupAsync(1);
+
+        // Assert
+        Assert.Equal(1, confirmation.CallCount);
+        Assert.Contains("3 件", confirmation.LastMessage);
+        Assert.Equal(0, sut.ItemCount);
+        Assert.Equal(string.Empty, sut.ItemsText);
+        Assert.Empty(items);
+    }
+
+    [Fact]
+    public async Task ClearItemsCommand_アイテムが無い場合_確認を表示しない()
+    {
+        // Arrange
+        var confirmation = new FakeConfirmationService(result: false);
+        var sut = CreateSut(confirmationService: confirmation);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.ClearItemsCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(0, confirmation.CallCount);
+        Assert.Equal(0, sut.ItemCount);
     }
 
     [Fact]
