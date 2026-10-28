@@ -11,6 +11,7 @@ using Windows.Graphics;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace AppRoulette
 {
@@ -26,11 +27,29 @@ namespace AppRoulette
         /// <summary>1フレームのインターバル（ミリ秒）。約60fps。</summary>
         private const int TIMER_INTERVAL_MS = 16;
 
-        /// <summary>ウィンドウの既定の幅（ピクセル）。</summary>
+        /// <summary>
+        /// ウィンドウの既定の幅（表示スケール 100% のときのピクセル）。
+        /// 実際の幅は表示スケールに合わせて拡大します。
+        /// </summary>
         private const int DEFAULT_WINDOW_WIDTH = 1300;
 
-        /// <summary>ウィンドウの既定の高さ（ピクセル）。</summary>
+        /// <summary>
+        /// ウィンドウの既定の高さ（表示スケール 100% のときのピクセル）。
+        /// 実際の高さは表示スケールに合わせて拡大します。
+        /// </summary>
         private const int DEFAULT_WINDOW_HEIGHT = 850;
+
+        /// <summary>表示スケール 100% のときの DPI。</summary>
+        private const double DEFAULT_DPI = 96.0;
+
+        /// <summary>
+        /// ウィンドウがあるモニターの DPI を取得します。
+        /// 失敗した場合は 0 を返します。
+        /// </summary>
+        /// <param name="hwnd">ウィンドウのハンドル。</param>
+        /// <returns>DPI（表示スケール 100% のときは 96）。</returns>
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern uint GetDpiForWindow(IntPtr hwnd);
 
         // ---------------------------------------------------------------
         // アニメーション状態
@@ -54,6 +73,9 @@ namespace AppRoulette
         /// <summary>ウィンドウ位置情報を管理するサービス。</summary>
         private IWindowPositionService? _positionService;
 
+        /// <summary>確認やメッセージのダイアログを表示するサービス。</summary>
+        private readonly IDialogService _dialogService;
+
         // ---------------------------------------------------------------
         // ViewModel
         // ---------------------------------------------------------------
@@ -75,13 +97,16 @@ namespace AppRoulette
         {
             InitializeComponent();
 
+            _dialogService = new ContentDialogService(() => Content?.XamlRoot);
             ViewModel = new MainViewModel(
                 new RandomService(),
                 new SqliteItemRepository(),
                 new SqliteGroupRepository(),
                 new SqliteAppSettingsRepository(),
                 new OneDriveFolderSyncService(),
-                new SyncTimestampStore());
+                new SyncTimestampStore(),
+                _dialogService,
+                new SqliteBackupRepository());
 
             ViewModel.PropertyChanged += (_, e) =>
             {
@@ -122,10 +147,9 @@ namespace AppRoulette
 
             try
             {
-                // ウィンドウサイズを既定値に設定
+                // 表示スケールに合わせた既定のサイズで、画面の中央に配置
                 ExtendsContentIntoTitleBar = false;
-                AppWindow.Resize(new Windows.Graphics.SizeInt32(
-                    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT));
+                ApplyDefaultWindowBounds(keepPosition: false);
                 UpdateGroupNameUnsavedVisualState();
 
                 // ウィンドウ位置情報を読み込んで、保存されているなら適用
@@ -206,7 +230,7 @@ namespace AppRoulette
 
         /// <summary>
         /// ウィンドウサイズをリセットボタンのクリックイベントを処理します。
-        /// ウィンドウのサイズを既定値（1300×850）に戻します。
+        /// ウィンドウのサイズを、表示スケールに合わせた既定のサイズに戻します。
         /// </summary>
         /// <param name="sender">イベント発生元。</param>
         /// <param name="e">イベント引数。</param>
@@ -215,13 +239,49 @@ namespace AppRoulette
         {
             try
             {
-                AppWindow.Resize(new Windows.Graphics.SizeInt32(
-                    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT));
+                ApplyDefaultWindowBounds(keepPosition: true);
             }
             catch (Exception ex)
             {
                 ApplicationLogger.LogError("ウィンドウサイズリセット", ex);
             }
+        }
+
+        /// <summary>
+        /// ウィンドウを、表示スケールに合わせた既定のサイズにします。
+        /// 既定のサイズが画面の作業領域より大きい場合は、作業領域に収めます。
+        /// </summary>
+        /// <param name="keepPosition">
+        /// 現在の位置を保つ場合は <c>true</c>（画面からはみ出す場合だけずらす）。
+        /// 作業領域の中央に置く場合は <c>false</c>。
+        /// </param>
+        private void ApplyDefaultWindowBounds(bool keepPosition)
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            var scale = GetDpiForWindow(hwnd) / DEFAULT_DPI;
+            var workArea = DisplayArea
+                .GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary)
+                .WorkArea;
+
+            var bounds = WindowSizeCalculator.CalculateDefaultBounds(
+                DEFAULT_WINDOW_WIDTH,
+                DEFAULT_WINDOW_HEIGHT,
+                scale,
+                new WindowPositionInfo
+                {
+                    X = workArea.X,
+                    Y = workArea.Y,
+                    Width = workArea.Width,
+                    Height = workArea.Height,
+                },
+                keepPosition ? AppWindow.Position.X : null,
+                keepPosition ? AppWindow.Position.Y : null);
+
+            AppWindow.MoveAndResize(new RectInt32(
+                bounds.X,
+                bounds.Y,
+                bounds.Width,
+                bounds.Height));
         }
 
         /// <summary>
@@ -243,6 +303,50 @@ namespace AppRoulette
             catch (Exception ex)
             {
                 ApplicationLogger.LogError("常に最前面表示切り替え", ex);
+            }
+        }
+
+        /// <summary>
+        /// 「このアプリについて」ボタンのクリックイベントを処理します。
+        /// アプリ名・バージョン・著作権表記をダイアログで表示します。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnAboutButtonClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await _dialogService.ShowMessageAsync(
+                    $"{AppInfoProvider.GetProductName()} について",
+                    AppInfoProvider.CreateAboutMessage());
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("バージョン情報表示", ex);
+            }
+        }
+
+        /// <summary>
+        /// 「ライセンス情報」ボタンのクリックイベントを処理します。
+        /// 使用しているソフトウェアのライセンス表示のファイルを、既定のアプリで開きます。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnThirdPartyNoticesButtonClick(object sender, RoutedEventArgs e)
+        {
+            var path = AppInfoProvider.ThirdPartyNoticesPath;
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("ライセンス情報表示", ex);
+                await _dialogService.ShowMessageAsync(
+                    "ライセンス情報",
+                    "ライセンス情報のファイルを開けませんでした。"
+                    + $"\n\nファイル: {path}\n詳細: {ex.Message}");
             }
         }
 
@@ -285,6 +389,7 @@ namespace AppRoulette
         {
             await ViewModel.InitializeCommand.ExecuteAsync(null);
             UpdateItemViewTabVisualState(isDetailSelected: true);
+            UpdateOperationTabVisualState(isDataSelected: true);
         }
 
         /// <summary>
@@ -350,25 +455,82 @@ namespace AppRoulette
                 return;
             }
 
-            DetailTabPanel.Visibility = isDetailSelected
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-            TextTabPanel.Visibility = isDetailSelected
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+            ApplyTabVisualState(
+                isDetailSelected ? DetailTabButton : TextTabButton,
+                isDetailSelected ? TextTabButton : DetailTabButton,
+                isDetailSelected ? DetailTabPanel : TextTabPanel,
+                isDetailSelected ? TextTabPanel : DetailTabPanel);
+        }
 
-            var selectedBrush = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
-            var unselectedBrush = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+        // ---------------------------------------------------------------
+        // 操作パネルのタブ（データ / その他）切り替え
+        // ---------------------------------------------------------------
 
-            DetailTabButton.Foreground = isDetailSelected ? selectedBrush : unselectedBrush;
-            DetailTabButton.FontWeight = isDetailSelected
-                ? Microsoft.UI.Text.FontWeights.SemiBold
-                : Microsoft.UI.Text.FontWeights.Normal;
+        /// <summary>
+        /// 「データ」タブボタンのクリックイベントハンドラー。
+        /// CSV・バックアップ・同期の操作を表示します。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnDataTabButtonClick(object sender, RoutedEventArgs e)
+        {
+            UpdateOperationTabVisualState(isDataSelected: true);
+        }
 
-            TextTabButton.Foreground = isDetailSelected ? unselectedBrush : selectedBrush;
-            TextTabButton.FontWeight = isDetailSelected
-                ? Microsoft.UI.Text.FontWeights.Normal
-                : Microsoft.UI.Text.FontWeights.SemiBold;
+        /// <summary>
+        /// 「その他」タブボタンのクリックイベントハンドラー。
+        /// ウィンドウ操作とアプリの情報を表示します。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnOtherTabButtonClick(object sender, RoutedEventArgs e)
+        {
+            UpdateOperationTabVisualState(isDataSelected: false);
+        }
+
+        /// <summary>
+        /// 操作パネルのタブの表示状態（パネルの表示切り替え・ボタンの選択状態）を更新します。
+        /// </summary>
+        /// <param name="isDataSelected">「データ」タブを選択状態にする場合は <c>true</c>。</param>
+        private void UpdateOperationTabVisualState(bool isDataSelected)
+        {
+            if (DataTabPanel is null || OtherTabPanel is null
+                || DataTabButton is null || OtherTabButton is null)
+            {
+                return;
+            }
+
+            ApplyTabVisualState(
+                isDataSelected ? DataTabButton : OtherTabButton,
+                isDataSelected ? OtherTabButton : DataTabButton,
+                isDataSelected ? DataTabPanel : OtherTabPanel,
+                isDataSelected ? OtherTabPanel : DataTabPanel);
+        }
+
+        /// <summary>
+        /// ボタンで作ったタブについて、選択したタブのパネルを表示し、
+        /// タブボタンの文字色と太さを選択状態に合わせて更新します。
+        /// </summary>
+        /// <param name="selectedButton">選択したタブのボタン。</param>
+        /// <param name="unselectedButton">選択していないタブのボタン。</param>
+        /// <param name="selectedPanel">選択したタブのパネル。</param>
+        /// <param name="unselectedPanel">選択していないタブのパネル。</param>
+        private static void ApplyTabVisualState(
+            Button selectedButton,
+            Button unselectedButton,
+            UIElement selectedPanel,
+            UIElement unselectedPanel)
+        {
+            selectedPanel.Visibility = Visibility.Visible;
+            unselectedPanel.Visibility = Visibility.Collapsed;
+
+            selectedButton.Foreground =
+                (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+            selectedButton.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+
+            unselectedButton.Foreground =
+                (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+            unselectedButton.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
         }
 
         // ---------------------------------------------------------------
@@ -818,11 +980,18 @@ namespace AppRoulette
                 }
 
                 var csv = ViewModel.ExportItemsToCsv();
-                await Windows.Storage.FileIO.WriteTextAsync(file, csv);
+                await Windows.Storage.FileIO.WriteBytesAsync(
+                    file,
+                    CsvFileEncoding.Encode(csv));
             }
             catch (Exception ex)
             {
                 ApplicationLogger.LogError("CSVエクスポート", ex);
+                await _dialogService.ShowMessageAsync(
+                    "CSV エクスポート",
+                    "CSV ファイルに保存できませんでした。"
+                    + "ファイルが Excel などのアプリで開かれていないか確認してください。"
+                    + $"\n\n詳細: {ex.Message}");
             }
         }
 
@@ -853,12 +1022,89 @@ namespace AppRoulette
                     return;
                 }
 
-                var content = await Windows.Storage.FileIO.ReadTextAsync(file);
-                ViewModel.ImportItemsFromCsv(content);
+                var buffer = await Windows.Storage.FileIO.ReadBufferAsync(file);
+                var content = CsvFileEncoding.Decode(buffer.ToArray());
+                await ViewModel.ImportItemsFromCsvAsync(content);
             }
             catch (Exception ex)
             {
                 ApplicationLogger.LogError("CSVインポート", ex);
+                await _dialogService.ShowMessageAsync(
+                    "CSV インポート",
+                    "CSV ファイルを読み込めませんでした。"
+                    + "ファイルが Excel などのアプリで開かれていないか確認してください。"
+                    + $"\n\n詳細: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 全リストとアイテムをバックアップファイルに保存します。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnSaveBackupButtonClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var picker = new Windows.Storage.Pickers.FileSavePicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation =
+                    Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeChoices.Add(
+                    "AppRoulette バックアップ", new List<string> { ".json" });
+                picker.SuggestedFileName = $"AppRoulette-backup-{DateTime.Now:yyyyMMdd-HHmm}";
+
+                var file = await picker.PickSaveFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+
+                await Windows.Storage.FileIO.WriteTextAsync(file, ViewModel.CreateBackupJson());
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("バックアップ保存", ex);
+                await _dialogService.ShowMessageAsync(
+                    "バックアップ保存",
+                    "バックアップを保存できませんでした。"
+                    + $"\n\n詳細: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// バックアップファイルを読み込み、全リストとアイテムを置き換えます。
+        /// </summary>
+        /// <param name="sender">送信元ボタン。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnRestoreBackupButtonClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var picker = new Windows.Storage.Pickers.FileOpenPicker();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+                picker.SuggestedStartLocation =
+                    Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeFilter.Add(".json");
+
+                var file = await picker.PickSingleFileAsync();
+                if (file is null)
+                {
+                    return;
+                }
+
+                var json = await Windows.Storage.FileIO.ReadTextAsync(file);
+                await ViewModel.RestoreBackupAsync(json);
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("バックアップから復元", ex);
+                await _dialogService.ShowMessageAsync(
+                    "バックアップから復元",
+                    "バックアップファイルを読み込めませんでした。"
+                    + $"\n\n詳細: {ex.Message}");
             }
         }
     }

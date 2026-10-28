@@ -17,6 +17,32 @@
 ストア版は MSIX が書き込み先をパッケージ専用のフォルダーに
 リダイレクトするため、2 つの版でデータは共有されません。
 
+## バージョンの上げ方
+
+「このアプリについて」に表示するバージョンは、版によって読み取る場所が違います。
+リリースのときは、次の 2 か所を同じバージョンにそろえてください。
+
+| | 読み取る場所 | 書き方の例 |
+| --- | --- | --- |
+| ストア版 | `AppRoulette (Package)\Package.appxmanifest` の `Identity` の `Version` | `1.1.0.0` |
+| exe 版 | `AppRoulette\AppRoulette.csproj` の `<Version>` | `1.1.0` |
+
+- ストアに提出するパッケージは、4 つ目の数字（リビジョン）を 0 にする必要があります。
+- 画面では、4 つ目の数字が 0 のときは省いて `1.1.0` のように表示します。
+
+## ライセンス表示の更新
+
+「ライセンス情報」ボタンで開く `AppRoulette\ThirdPartyNotices.txt` は、
+アプリと一緒に配布するソフトウェアのライセンスを、原文のまま並べたものです。
+NuGet パッケージを追加・更新したときや、.NET のランタイムを更新したときは、このファイルも更新してください。
+
+- 各節の内容は、`%USERPROFILE%\.nuget\packages\<パッケージ名>\<バージョン>\` にある
+  `LICENSE.txt`、`License.md`、`NOTICE.txt`、`ThirdPartyNotices.txt` などから取っています。
+  .NET の節は `microsoft.netcore.app.runtime.win-x64` の `LICENSE.TXT` と `THIRD-PARTY-NOTICES.TXT` です。
+- パッケージにライセンスファイルが無い Microsoft.Data.Sqlite と SQLitePCLRaw は、
+  それぞれのリポジトリ（dotnet/efcore、ericsink/SQLitePCL.raw）の LICENSE から取っています。
+- 冒頭の一覧に書いたバージョンも、合わせて書き換えます。
+
 ## ストア版のビルド
 
 1. ソリューション エクスプローラーで **AppRoulette (Package)** を右クリックし、
@@ -87,6 +113,26 @@ x86 版を作るときは `win-x86` / `x86` に変えます。
 - exe 単体では動きません。出力フォルダーごと zip にして配布します。
 - 署名していないため、ダウンロードした exe を実行すると
   Windows SmartScreen の警告が出ます。
+
+## CI（GitHub Actions）
+
+`.github/workflows/build.yml` で、次のときに Windows 上でビルドとテストを行います。
+
+- `main` と `product*` ブランチへのプッシュ
+- `main` へのプルリクエスト
+- Actions 画面からの手動実行（Run workflow）
+
+| ステップ | 内容 |
+| --- | --- |
+| テスト | `AppRoulette.Tests` をビルドして実行する |
+| exe 版の発行 | `exe-win-x64` プロファイルで発行する（出力先は `-o` で上書き） |
+| アーティファクトの保存 | 発行した exe 版を `AppRoulette-win-x64` として 14 日間保存する |
+
+CI で作った exe 版は、Actions の実行結果のページにある
+**Artifacts** からダウンロードできます。
+
+ストア版のパッケージ（wapproj）は Visual Studio の MSBuild が必要なため、
+CI ではビルドしていません。
 
 ## デバッグ版のデータを exe 版へコピーする
 

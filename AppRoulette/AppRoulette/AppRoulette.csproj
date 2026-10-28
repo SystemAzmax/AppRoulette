@@ -11,10 +11,23 @@
     <WinUISDKReferences>false</WinUISDKReferences>
     <Nullable>enable</Nullable>
     <ApplicationIcon>Copilot_20260614_202528.ico</ApplicationIcon>
+    <!-- exe 版の「このアプリについて」に表示するバージョン。
+         ストア版は Package.appxmanifest の Identity の Version を表示するため、
+         リリースのときは両方を同じ値にする（docs/BuildGuide.md を参照） -->
+    <Version>1.0.0</Version>
+    <Copyright>© 2026 SystemAzmax</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 「ライセンス情報」で開く、使用しているソフトウェアのライセンス表示。
+         パッケージを更新したときの作り直し方は docs/BuildGuide.md を参照 -->
+    <Content Include="ThirdPartyNotices.txt" CopyToOutputDirectory="PreserveNewest" />
+    <!-- exe のアイコンと同じものを、ウィンドウとタスクバーのアイコンにも使う（App.xaml.cs で読み込む） -->
+    <Content Include="Copilot_20260614_202528.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

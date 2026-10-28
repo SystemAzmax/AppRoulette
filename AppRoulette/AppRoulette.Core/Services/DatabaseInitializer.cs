@@ -78,7 +78,7 @@ public class DatabaseInitializer
             try
             {
                 // 同期的にデータベースを初期化
-                InitializeDatabase();
+                InitializeDatabase(GetConnectionString());
 
                 // 初期化完了フラグを設定
                 _isInitialized = true;
@@ -94,12 +94,13 @@ public class DatabaseInitializer
     }
 
     /// <summary>
-    /// データベースの同期初期化処理を実行します。
-    /// Items テーブルが存在しない場合は自動作成します。
+    /// 指定したデータベースの同期初期化処理を実行します。
+    /// テーブルが存在しない場合は自動作成し、足りない列を追加します。
+    /// テストでは、一時ファイルのデータベースに対して呼び出します。
     /// </summary>
-    private static void InitializeDatabase()
+    /// <param name="connectionString">初期化するデータベースの接続文字列。</param>
+    public static void InitializeDatabase(string connectionString)
     {
-        string connectionString = GetConnectionString();
         using var connection = new SqliteConnection(connectionString);
         connection.Open();
 

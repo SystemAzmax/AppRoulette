@@ -35,12 +35,16 @@ public class MainViewModel : ObservableObject
 
     private const string SYNC_STATUS_FAILED = "同期失敗";
 
+    private const string DELETE_CONFIRM_BUTTON_TEXT = "削除";
+
     private readonly IRandomService _randomService;
     private readonly IItemRepository _itemRepository;
     private readonly IGroupRepository _groupRepository;
     private readonly IAppSettingsRepository _appSettingsRepository;
     private readonly ICloudSyncService? _cloudSyncService;
     private readonly SyncTimestampStore? _syncTimestampStore;
+    private readonly IDialogService? _dialogService;
+    private readonly IBackupRepository? _backupRepository;
 
     private readonly Dictionary<int, CancellationTokenSource> _saveDebounceTokens =
         new();
@@ -326,9 +330,9 @@ public class MainViewModel : ObservableObject
     public IRelayCommand SpinCommand { get; }
 
     /// <summary>
-    /// 選択中のグループの全アイテムをクリアするコマンド。
+    /// 利用者に確認したうえで、選択中のグループの全アイテムをクリアするコマンド。
     /// </summary>
-    public IRelayCommand ClearItemsCommand { get; }
+    public IAsyncRelayCommand ClearItemsCommand { get; }
 
     /// <summary>
     /// 選択中のグループ名を変更するコマンド。
@@ -411,13 +415,22 @@ public class MainViewModel : ObservableObject
     /// <param name="appSettingsRepository">アプリ設定リポジトリ。</param>
     /// <param name="cloudSyncService">クラウド同期サービス。null の場合は同期無効。</param>
     /// <param name="syncTimestampStore">同期タイムスタンプストア。null の場合は同期無効。</param>
+    /// <param name="dialogService">
+    /// 確認やメッセージを表示するサービス。
+    /// null の場合は確認せずに実行し、メッセージも表示しません。
+    /// </param>
+    /// <param name="backupRepository">
+    /// バックアップからの復元で全データを置き換えるリポジトリ。null の場合は復元できません。
+    /// </param>
     public MainViewModel(
         IRandomService randomService,
         IItemRepository itemRepository,
         IGroupRepository groupRepository,
         IAppSettingsRepository appSettingsRepository,
         ICloudSyncService? cloudSyncService = null,
-        SyncTimestampStore? syncTimestampStore = null)
+        SyncTimestampStore? syncTimestampStore = null,
+        IDialogService? dialogService = null,
+        IBackupRepository? backupRepository = null)
     {
         _randomService = randomService;
         _itemRepository = itemRepository;
@@ -425,9 +438,11 @@ public class MainViewModel : ObservableObject
         _appSettingsRepository = appSettingsRepository;
         _cloudSyncService = cloudSyncService;
         _syncTimestampStore = syncTimestampStore;
+        _dialogService = dialogService;
+        _backupRepository = backupRepository;
         InitializeCommand = new AsyncRelayCommand(InitializeAsync);
         SpinCommand = new RelayCommand(Spin, CanSpin);
-        ClearItemsCommand = new RelayCommand(ClearItems);
+        ClearItemsCommand = new AsyncRelayCommand(ClearItemsAsync);
         RenameGroupCommand = new AsyncRelayCommand(RenameGroupAsync, CanRenameGroup);
         ResetGroupNameCommand = new AsyncRelayCommand(
             ResetGroupNameAsync,
@@ -862,7 +877,7 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 選択中のグループを削除します。
+    /// 利用者に確認したうえで、選択中のグループを削除します。
     /// </summary>
     private async Task DeleteGroupAsync()
     {
@@ -871,10 +886,20 @@ public class MainViewModel : ObservableObject
             return;
         }
 
+        var group = SelectedGroup;
+        var itemCountText = group.Items.Count > 0
+            ? $"と、そのアイテム {group.Items.Count} 件"
+            : string.Empty;
+        if (!await ConfirmDeleteAsync(
+                "リストを削除しますか？",
+                $"「{group.DisplayName}」{itemCountText}を削除します。この操作は元に戻せません。"))
+        {
+            return;
+        }
+
         try
         {
             SaveStatusText = SAVE_STATUS_SAVING;
-            var group = SelectedGroup;
             var currentIndex = GroupList.IndexOf(group);
 
             await _groupRepository.DeleteGroupAsync(group.Id);
@@ -1341,6 +1366,61 @@ public class MainViewModel : ObservableObject
        };
 
     /// <summary>
+    /// 利用者に確認したうえで、選択中のグループの全アイテムをクリアします。
+    /// アイテムが無い場合は確認しません。
+    /// </summary>
+    private async Task ClearItemsAsync()
+    {
+        if (SelectedGroup is null)
+        {
+            return;
+        }
+
+        var group = SelectedGroup;
+        if (group.Items.Count > 0
+            && !await ConfirmDeleteAsync(
+                "アイテムをすべて削除しますか？",
+                $"「{group.DisplayName}」のアイテム {group.Items.Count} 件をすべて削除します。この操作は元に戻せません。"))
+        {
+            return;
+        }
+
+        ClearItems();
+    }
+
+    /// <summary>
+    /// 削除操作の実行を利用者に確認します。
+    /// ダイアログサービスが無い場合は、確認せずに実行を許可します。
+    /// </summary>
+    /// <param name="title">確認のタイトル。</param>
+    /// <param name="message">確認の本文。</param>
+    /// <returns>削除を実行する場合は <c>true</c>。</returns>
+    private Task<bool> ConfirmDeleteAsync(string title, string message) =>
+        ConfirmAsync(title, message, DELETE_CONFIRM_BUTTON_TEXT);
+
+    /// <summary>
+    /// 操作の実行を利用者に確認します。
+    /// ダイアログサービスが無い場合は、確認せずに実行を許可します。
+    /// </summary>
+    /// <param name="title">確認のタイトル。</param>
+    /// <param name="message">確認の本文。</param>
+    /// <param name="confirmButtonText">実行ボタンの表示テキスト。</param>
+    /// <returns>操作を実行する場合は <c>true</c>。</returns>
+    private Task<bool> ConfirmAsync(string title, string message, string confirmButtonText) =>
+        _dialogService?.ConfirmAsync(title, message, confirmButtonText)
+        ?? Task.FromResult(true);
+
+    /// <summary>
+    /// 利用者にメッセージを表示します。
+    /// ダイアログサービスが無い場合は何もしません。
+    /// </summary>
+    /// <param name="title">メッセージのタイトル。</param>
+    /// <param name="message">メッセージの本文。</param>
+    private Task ShowMessageAsync(string title, string message) =>
+        _dialogService?.ShowMessageAsync(title, message)
+        ?? Task.CompletedTask;
+
+    /// <summary>
     /// 選択中のグループの全アイテムをクリアします。
     /// アイテムをクリアした後、SQLite にも同期します。
     /// </summary>
@@ -1461,10 +1541,7 @@ public class MainViewModel : ObservableObject
         cancellationToken.ThrowIfCancellationRequested();
 
         var itemsSnapshot = group.Items
-            .Select(item => new RouletteItem(item.Name)
-            {
-                Weight = item.Weight,
-            })
+            .Select(CloneItem)
             .ToList();
 
         await _itemRepository.SaveItemsByGroupAsync(group.Id, itemsSnapshot);
@@ -1603,6 +1680,12 @@ public class MainViewModel : ObservableObject
     /// <summary>CSVエクスポート時に付与するヘッダー行。</summary>
     private const string CSV_HEADER = "アイテム名,Weight";
 
+    /// <summary>CSVインポートで表示するダイアログのタイトル。</summary>
+    private const string CSV_IMPORT_TITLE = "CSV インポート";
+
+    /// <summary>CSVインポートでアイテムを置き換える確認の実行ボタンの表示テキスト。</summary>
+    private const string CSV_IMPORT_CONFIRM_BUTTON_TEXT = "置き換え";
+
     /// <summary>
     /// 選択中グループのアイテム一覧をCSV形式のテキストに変換します。
     /// 先頭行にはヘッダー（<see cref="CSV_HEADER"/>）を付与します。
@@ -1615,25 +1698,166 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// CSV形式のテキストを解析し、選択中グループのアイテム一覧に反映します。
+    /// CSV形式のテキストを解析し、選択中グループのアイテム一覧を置き換えます。
     /// 先頭行が <see cref="CSV_HEADER"/> と一致する場合はヘッダー行として除外します。
+    /// 既存のアイテムがある場合は置き換える前に利用者に確認し、
+    /// 読み込めるアイテムが無い場合や最大件数を超えた場合は利用者に知らせます。
     /// </summary>
     /// <param name="csvContent">インポートするCSV形式のテキスト。</param>
-    public void ImportItemsFromCsv(string csvContent)
+    public async Task ImportItemsFromCsvAsync(string csvContent)
     {
         if (SelectedGroup is null || csvContent is null)
         {
             return;
         }
 
-        var normalized = csvContent.Replace("\r\n", "\n").Replace("\r", "\n");
+        var normalized = csvContent
+            .TrimStart('﻿')
+            .Replace("\r\n", "\n")
+            .Replace("\r", "\n");
         var lines = normalized.Split('\n');
         var startIndex = lines.Length > 0
             && string.Equals(lines[0].Trim(), CSV_HEADER, StringComparison.OrdinalIgnoreCase)
             ? 1
             : 0;
+        var parsedItems = ParseItems(string.Join('\n', lines.Skip(startIndex)));
 
-        ItemsText = string.Join('\n', lines.Skip(startIndex));
+        if (parsedItems.Count == 0)
+        {
+            await ShowMessageAsync(
+                CSV_IMPORT_TITLE,
+                "読み込めるアイテムがありませんでした。"
+                + "CSV ファイルには、1 行に 1 つずつ「名前,Weight」の形式で書いてください。");
+            return;
+        }
+
+        var group = SelectedGroup;
+        var items = parsedItems.Take(RouletteGroup.MAX_ITEM_COUNT).ToList();
+        var skippedCount = parsedItems.Count - items.Count;
+        var needsConfirm = group.Items.Count > 0;
+
+        if (needsConfirm)
+        {
+            var skippedText = skippedCount > 0
+                ? $"最大 {RouletteGroup.MAX_ITEM_COUNT} 件のため、"
+                    + $"{RouletteGroup.MAX_ITEM_COUNT + 1} 件目以降の {skippedCount} 件は読み込みません。"
+                : string.Empty;
+            if (!await ConfirmAsync(
+                    "アイテムを置き換えますか？",
+                    $"「{group.DisplayName}」のアイテム {group.Items.Count} 件を、"
+                        + $"CSV ファイルのアイテム {items.Count} 件で置き換えます。{skippedText}",
+                    CSV_IMPORT_CONFIRM_BUTTON_TEXT))
+            {
+                return;
+            }
+        }
+
+        ItemsText = FormatItems(items);
+
+        // 確認で知らせていない場合は、読み込まなかった件数をここで知らせる
+        if (!needsConfirm && skippedCount > 0)
+        {
+            await ShowMessageAsync(
+                CSV_IMPORT_TITLE,
+                $"最大 {RouletteGroup.MAX_ITEM_COUNT} 件のため、"
+                    + $"{RouletteGroup.MAX_ITEM_COUNT + 1} 件目以降の {skippedCount} 件は読み込みませんでした。");
+        }
+    }
+
+    /// <summary>バックアップからの復元で表示するダイアログのタイトル。</summary>
+    private const string BACKUP_RESTORE_TITLE = "バックアップから復元";
+
+    /// <summary>バックアップからの復元の確認の実行ボタンの表示テキスト。</summary>
+    private const string BACKUP_RESTORE_CONFIRM_BUTTON_TEXT = "復元";
+
+    /// <summary>
+    /// 全リストとアイテムのバックアップファイルの内容を作成します。
+    /// まだ保存されていない直前の編集も含めます。
+    /// </summary>
+    /// <returns>バックアップファイルの内容（JSON）。</returns>
+    public string CreateBackupJson() =>
+        BackupSerializer.Serialize(GroupList, DateTime.UtcNow);
+
+    /// <summary>
+    /// バックアップファイルの内容で、全リストとアイテムを置き換えます。
+    /// 置き換える前に利用者に確認し、内容が正しくない場合や保存に失敗した場合は
+    /// 利用者に知らせて、データを変更しません。
+    /// </summary>
+    /// <param name="json">バックアップファイルの内容（JSON）。</param>
+    public async Task RestoreBackupAsync(string json)
+    {
+        if (_backupRepository is null)
+        {
+            return;
+        }
+
+        List<RouletteGroup> groups;
+        try
+        {
+            groups = BackupSerializer.Deserialize(json);
+        }
+        catch (BackupFormatException ex)
+        {
+            await ShowMessageAsync(BACKUP_RESTORE_TITLE, ex.Message);
+            return;
+        }
+
+        var itemCount = groups.Sum(group => group.Items.Count);
+        if (!await ConfirmAsync(
+                "バックアップから復元しますか？",
+                $"今のリスト {GroupList.Count} 件とそのアイテムをすべて削除し、"
+                    + $"バックアップのリスト {groups.Count} 件（アイテム {itemCount} 件）に置き換えます。"
+                    + "この操作は元に戻せません。",
+                BACKUP_RESTORE_CONFIRM_BUTTON_TEXT))
+        {
+            return;
+        }
+
+        // 保存待ちの古い内容が、復元後のデータに書き込まれないようにする
+        CancelPendingItemSaves();
+
+        try
+        {
+            SaveStatusText = SAVE_STATUS_SAVING;
+            await _backupRepository.ReplaceAllAsync(groups);
+
+            GroupList = new ObservableCollection<RouletteGroup>(groups);
+            SelectedGroup = GroupList[0];
+            UpdateGroupCommandStates();
+            SaveStatusText = SAVE_STATUS_SAVED;
+        }
+        catch (Exception ex)
+        {
+            SaveStatusText = SAVE_STATUS_FAILED;
+            ApplicationLogger.LogError("バックアップから復元", ex);
+            await ShowMessageAsync(
+                BACKUP_RESTORE_TITLE,
+                "復元できませんでした。データは変更されていません。"
+                + $"\n\n詳細: {ex.Message}");
+            return;
+        }
+
+        // OneDrive 同期を使っている場合は、復元した内容を他の PC にも反映する
+        foreach (var group in groups)
+        {
+            _ = UploadGroupSafelyAsync(group);
+        }
+
+        await ShowMessageAsync(
+            BACKUP_RESTORE_TITLE,
+            $"バックアップから復元しました（リスト {groups.Count} 件、アイテム {itemCount} 件）。");
+    }
+
+    /// <summary>
+    /// デバウンス中で保存待ちのアイテム保存をすべて取り消します。
+    /// </summary>
+    private void CancelPendingItemSaves()
+    {
+        // 取り消しで保存処理が終わると辞書から削除されるため、コピーに対して取り消す
+        foreach (var cts in _saveDebounceTokens.Values.ToList())
+        {
+            cts.Cancel();
+        }
     }
 
     /// <summary>

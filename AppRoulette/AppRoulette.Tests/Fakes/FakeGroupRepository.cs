@@ -141,6 +141,36 @@ internal class FakeGroupRepository : IGroupRepository
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// 全グループを削除済みにしたうえで、指定したグループ一覧で置き換えます。
+    /// <see cref="FakeBackupRepository"/> から呼び出します。
+    /// </summary>
+    /// <param name="groups">置き換え後のグループ一覧（表示順）。</param>
+    public void ReplaceAll(IReadOnlyList<RouletteGroup> groups)
+    {
+        foreach (var record in _groups)
+        {
+            record.IsDeleted = true;
+        }
+
+        for (var i = 0; i < groups.Count; i++)
+        {
+            var group = groups[i];
+            var record = _groups.FirstOrDefault(g => g.Id == group.Id);
+            if (record is null)
+            {
+                record = new GroupRecord(group.Id, group.DisplayName, i + 1, isDeleted: false);
+                _groups.Add(record);
+            }
+
+            record.DisplayName = group.DisplayName;
+            record.SortOrder = i + 1;
+            record.IsDeleted = false;
+            record.ExcludeOnWin = group.ExcludeOnWin;
+            _nextId = Math.Max(_nextId, group.Id + 1);
+        }
+    }
+
     private sealed class GroupRecord
     {
         public GroupRecord(
