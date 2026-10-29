@@ -27,7 +27,13 @@ namespace AppRoulette
     /// </summary>
     public partial class App : Application
     {
-        private Window? _window;
+        /// <summary>エラーのログファイルの名前。</summary>
+        private const string LOG_FILE_NAME = "error.log";
+
+        /// <summary>予期しない例外を利用者に知らせるときの見出し。</summary>
+        private const string UNEXPECTED_ERROR_TITLE = "予期しないエラーが発生しました";
+
+        private MainWindow? _window;
 
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
@@ -37,41 +43,12 @@ namespace AppRoulette
         {
             InitializeComponent();
 
-            // アプリケーションアイコンを初期化
-            try
-            {
-                GenerateApplicationIcon();
-            }
-            catch (Exception ex)
-            {
-                ApplicationLogger.LogError("アプリケーションアイコン生成", ex);
-            }
-        }
+            // リリース版でも原因を調べられるよう、エラーをファイルにも記録する
+            ApplicationLogger.Configure(GetLogFilePath());
 
-        /// <summary>
-        /// アプリケーションアイコンを生成して保存します。
-        /// </summary>
-        private void GenerateApplicationIcon()
-        {            string assetsPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets");
-            string iconPath = System.IO.Path.Combine(assetsPath, "app.ico");
-
-            // Assetsフォルダが存在しなければ作成
-            if (!Directory.Exists(assetsPath))
-            {
-                Directory.CreateDirectory(assetsPath);
-            }
-
-            // アイコンが既に存在する場合はスキップ
-            if (File.Exists(iconPath))
-            {
-                return;
-            }
-
-            // ルーレットアイコンを生成
-            byte[] iconData = Services.AppIconService.GenerateRouletteIcon(256);
-
-            // ファイルに保存
-            File.WriteAllBytes(iconPath, iconData);
+            UnhandledException += OnUnhandledException;
+            AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
+            TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
         }
 
         /// <summary>
@@ -103,25 +80,20 @@ namespace AppRoulette
             catch (Exception ex)
             {
                 ApplicationLogger.LogError("データベース初期化", ex);
+                _window.ViewModel.ShowError(
+                    "データベースを開けませんでした",
+                    "リストとアイテムの保存先を準備できませんでした。"
+                    + "変更が保存されない場合があります。アプリを再起動してください。"
+                    + $"\n\n詳細: {ex.Message}");
             }
 
-            // ウィンドウアイコンを設定
+            // ウィンドウアイコンを設定（exe と同じ ico を出力フォルダーから読み込む）
             try
             {
-                // 複数のアイコン候補を試す
-                string[] iconPaths = new[]
+                string iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Copilot_20260614_202528.ico");
+                if (File.Exists(iconPath))
                 {
-                    System.IO.Path.Combine(AppContext.BaseDirectory, "Copilot_20260614_202528.ico"),
-                    System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico"),
-                };
-
-                foreach (string iconPath in iconPaths)
-                {
-                    if (File.Exists(iconPath))
-                    {
-                        _window.AppWindow.SetIcon(iconPath);
-                        break;
-                    }
+                    _window.AppWindow.SetIcon(iconPath);
                 }
             }
             catch (Exception ex)
@@ -130,6 +102,83 @@ namespace AppRoulette
             }
 
             _window.Activate();
+        }
+
+        /// <summary>
+        /// エラーのログファイルのパスを取得します。
+        /// ストア版は、パッケージの LocalState に置きます。
+        /// %LOCALAPPDATA% の下に置くと MSIX が別の場所へリダイレクトするため、
+        /// 「ログを開く」でメモ帳などに渡したパスでは開けなくなるためです。
+        /// </summary>
+        /// <returns>ログファイルのフルパス。</returns>
+        private static string GetLogFilePath()
+        {
+            string folder;
+            try
+            {
+                folder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+            }
+            catch (Exception)
+            {
+                // exe 版（パッケージなし）では ApplicationData を使えないため、データと同じフォルダーに置く
+                folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "AppRoulette");
+            }
+
+            return System.IO.Path.Combine(folder, "logs", LOG_FILE_NAME);
+        }
+
+        /// <summary>
+        /// UI スレッドで処理されなかった例外を記録し、利用者に知らせます。
+        /// アプリを終了させずに、操作を続けられるようにします。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private void OnUnhandledException(
+            object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+        {
+            ApplicationLogger.LogError("予期しない例外", e.Exception);
+
+            if (_window is null)
+            {
+                // ウィンドウを作る前は知らせる先が無いため、終了に任せる
+                return;
+            }
+
+            e.Handled = true;
+            _window.ViewModel.ShowError(
+                UNEXPECTED_ERROR_TITLE,
+                "完了していない操作がある可能性があります。"
+                + "動作がおかしい場合は、アプリを再起動してください。"
+                + $"\n\n詳細: {e.Exception.Message}");
+        }
+
+        /// <summary>
+        /// UI スレッド以外で処理されなかった例外を記録します。
+        /// この場合はアプリが終了するため、利用者には知らせられません。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private static void OnDomainUnhandledException(
+            object sender, System.UnhandledExceptionEventArgs e)
+        {
+            if (e.ExceptionObject is Exception exception)
+            {
+                ApplicationLogger.LogError("予期しない例外（アプリ終了）", exception);
+            }
+        }
+
+        /// <summary>
+        /// 待機されずに失敗したタスクの例外を記録します。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private static void OnUnobservedTaskException(
+            object? sender, UnobservedTaskExceptionEventArgs e)
+        {
+            ApplicationLogger.LogError("待機されなかったタスクの例外", e.Exception);
+            e.SetObserved();
         }
 
         /// <summary>

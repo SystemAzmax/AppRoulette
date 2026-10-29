@@ -13,6 +13,11 @@ internal class FakeItemRepository : IItemRepository
     private int _nextId = 1;
 
     /// <summary>
+    /// グループのアイテムの保存で例外を投げるかどうかを取得または設定します。
+    /// </summary>
+    public bool ShouldFailOnSave { get; set; }
+
+    /// <summary>
     /// すべてのアイテムを非同期で取得します。
     /// </summary>
     public Task<List<Item>> GetItemsAsync() =>
@@ -65,6 +70,11 @@ internal class FakeItemRepository : IItemRepository
         int groupId,
         IReadOnlyList<RouletteItem> items)
     {
+        if (ShouldFailOnSave)
+        {
+            throw new IOException("テスト用の保存失敗");
+        }
+
         _items.RemoveAll(i => i.GroupId == groupId);
 
         foreach (var item in items)

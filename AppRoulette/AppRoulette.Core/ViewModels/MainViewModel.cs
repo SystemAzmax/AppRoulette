@@ -25,6 +25,12 @@ public class MainViewModel : ObservableObject
 
     private const string SAVE_STATUS_FAILED = "保存失敗";
 
+    private const string SAVE_STATUS_LOAD_FAILED = "読み込み失敗";
+
+    private const string SAVE_FAILED_TITLE = "保存できませんでした";
+
+    private const string LOAD_FAILED_TITLE = "データを読み込めませんでした";
+
     private const string DEFAULT_NEW_ITEM_NAME = "新しいアイテム";
 
     private const string SYNC_STATUS_READY = "同期待機";
@@ -86,6 +92,12 @@ public class MainViewModel : ObservableObject
     private bool _isSyncingEditableItems;
 
     private string _syncStatusText = SYNC_STATUS_READY;
+
+    private string _errorTitle = string.Empty;
+
+    private string _errorMessage = string.Empty;
+
+    private bool _isErrorOpen;
 
     /// <summary>直近のスピンで当選したアイテム。</summary>
     private RouletteItem? _lastWinner;
@@ -395,7 +407,8 @@ public class MainViewModel : ObservableObject
     /// どうかを取得します。
     /// </summary>
     public bool IsSyncAvailable =>
-        _cloudSyncService is not null && _syncTimestampStore is not null;
+        _cloudSyncService is { IsAvailable: true }
+        && _syncTimestampStore is not null;
 
     /// <summary>
     /// 同期状態の表示テキストを取得します。
@@ -407,13 +420,43 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 利用者に知らせるエラーの見出しを取得します。
+    /// </summary>
+    public string ErrorTitle
+    {
+        get => _errorTitle;
+        private set => SetProperty(ref _errorTitle, value);
+    }
+
+    /// <summary>
+    /// 利用者に知らせるエラーの内容を取得します。
+    /// </summary>
+    public string ErrorMessage
+    {
+        get => _errorMessage;
+        private set => SetProperty(ref _errorMessage, value);
+    }
+
+    /// <summary>
+    /// エラーの知らせを表示しているかどうかを取得または設定します。
+    /// 利用者が知らせを閉じると false になります。
+    /// </summary>
+    public bool IsErrorOpen
+    {
+        get => _isErrorOpen;
+        set => SetProperty(ref _isErrorOpen, value);
+    }
+
+    /// <summary>
     /// <see cref="MainViewModel"/> を初期化します。
     /// </summary>
     /// <param name="randomService">ランダム生成サービス。</param>
     /// <param name="itemRepository">SQLite Item リポジトリ。</param>
     /// <param name="groupRepository">SQLite Group リポジトリ。</param>
     /// <param name="appSettingsRepository">アプリ設定リポジトリ。</param>
-    /// <param name="cloudSyncService">クラウド同期サービス。null の場合は同期無効。</param>
+    /// <param name="cloudSyncService">
+    /// クラウド同期サービス。null の場合や、同期先のフォルダーが検出されない場合は同期無効。
+    /// </param>
     /// <param name="syncTimestampStore">同期タイムスタンプストア。null の場合は同期無効。</param>
     /// <param name="dialogService">
     /// 確認やメッセージを表示するサービス。
@@ -469,8 +512,47 @@ public class MainViewModel : ObservableObject
     /// グループデータを初期化し、SQLite から Items を読み込みます。
     /// JSON は使用せず、デフォルトの9グループを作成して SQLite から Items を充填します。
     /// 前回起動時に選択されたグループを復元します。
+    /// 読み込めない場合は、利用者に知らせます。
     /// </summary>
     private async Task InitializeAsync()
+    {
+        List<RouletteGroup> groups;
+        int lastSelectedGroupId;
+        try
+        {
+            groups = await LoadGroupsAsync();
+            lastSelectedGroupId = await _appSettingsRepository.GetLastSelectedGroupIdAsync();
+        }
+        catch (Exception ex)
+        {
+            // データベースを開けないなどで読み込めない場合も、アプリを落とさずに知らせる
+            ApplicationLogger.LogError("データ読み込み", ex);
+            SaveStatusText = SAVE_STATUS_LOAD_FAILED;
+            ShowError(
+                LOAD_FAILED_TITLE,
+                "保存しているリストとアイテムを読み込めませんでした。"
+                + "このまま操作しても、変更が保存されない場合があります。アプリを再起動してください。"
+                + $"\n\n詳細: {ex.Message}");
+            return;
+        }
+
+        GroupList = new ObservableCollection<RouletteGroup>(groups);
+
+        // 前回起動時に選択されたグループを復元
+        var selectedGroup = groups.FirstOrDefault(g => g.Id == lastSelectedGroupId)
+            ?? (GroupList.Count > 0 ? GroupList[0] : null);
+        SelectedGroup = selectedGroup;
+        UpdateGroupCommandStates();
+
+        await DownloadOnStartupAsync();
+    }
+
+    /// <summary>
+    /// 既定のグループ（Roulette1～9）が無ければ作成し、
+    /// 全グループとそのアイテムを SQLite から読み込みます。
+    /// </summary>
+    /// <returns>表示順に並んだグループ一覧。</returns>
+    private async Task<List<RouletteGroup>> LoadGroupsAsync()
     {
         // デフォルトグループを作成（Roulette1～9）
         var groups = new List<RouletteGroup>(RouletteGroup.GROUP_COUNT);
@@ -495,21 +577,38 @@ public class MainViewModel : ObservableObject
                 .ToList();
         }
 
-        GroupList = new ObservableCollection<RouletteGroup>(groups);
+        return groups;
+    }
 
-        // 前回起動時に選択されたグループを復元
-        var lastSelectedGroupId = await _appSettingsRepository.GetLastSelectedGroupIdAsync();
-        var selectedGroup = groups.FirstOrDefault(g => g.Id == lastSelectedGroupId) 
-            ?? (GroupList.Count > 0 ? GroupList[0] : null);
-        SelectedGroup = selectedGroup;
-        UpdateGroupCommandStates();
+    /// <summary>
+    /// エラーを利用者に知らせます。
+    /// 前の知らせを表示している場合は、新しい内容に置き換えます。
+    /// </summary>
+    /// <param name="title">知らせの見出し。</param>
+    /// <param name="message">知らせの内容。</param>
+    public void ShowError(string title, string message)
+    {
+        ErrorTitle = title;
+        ErrorMessage = message;
+        IsErrorOpen = true;
+    }
 
-        await DownloadOnStartupAsync();
+    /// <summary>
+    /// 保存の失敗をログに記録し、保存状態の表示を「保存失敗」にして利用者に知らせます。
+    /// </summary>
+    /// <param name="context">ログに記録する処理の説明。</param>
+    /// <param name="message">利用者に知らせる、保存できなかった内容。</param>
+    /// <param name="exception">発生した例外。</param>
+    private void ReportSaveFailure(string context, string message, Exception exception)
+    {
+        SaveStatusText = SAVE_STATUS_FAILED;
+        ApplicationLogger.LogError(context, exception);
+        ShowError(SAVE_FAILED_TITLE, $"{message}\n\n詳細: {exception.Message}");
     }
 
     /// <summary>
     /// 起動時に選択中グループの OneDrive フォルダーのデータを
-    /// ダウンロードして新しければ適用します。
+    /// ダウンロードして新しければ適用し、結果を同期状態に表示します。
     /// </summary>
     private async Task DownloadOnStartupAsync()
     {
@@ -518,17 +617,18 @@ public class MainViewModel : ObservableObject
             return;
         }
 
-        if (SelectedGroup is not null)
-        {
-            await DownloadAndApplyGroupAsync(SelectedGroup.Id);
-        }
-
-        SyncStatusText = SYNC_STATUS_SYNCED;
+        var succeeded = SelectedGroup is null
+            || await DownloadAndApplyGroupAsync(SelectedGroup.Id);
+        SyncStatusText = succeeded
+            ? SYNC_STATUS_SYNCED
+            : SYNC_STATUS_FAILED;
     }
 
     /// <summary>
     /// 全グループをクラウドと双方向に同期します。
     /// 各グループについてタイムスタンプの新しい方を採用します。
+    /// 同期ファイルを読めないグループは、クラウドのデータを手元のデータで
+    /// 上書きしないよう、適用もアップロードもせずに飛ばして「同期失敗」と表示します。
     /// </summary>
     private async Task SyncAllAsync()
     {
@@ -541,17 +641,29 @@ public class MainViewModel : ObservableObject
 
         try
         {
-            var remoteGroups = await _cloudSyncService.DownloadAllGroupsAsync();
-            var remoteById = remoteGroups.ToDictionary(g => g.GroupId);
             var uploadTargets = new List<SyncGroupData>();
+            var allDownloaded = true;
 
             foreach (var group in GroupList)
             {
+                SyncGroupData? remote;
+                try
+                {
+                    remote = await _cloudSyncService.DownloadGroupAsync(group.Id);
+                }
+                catch (Exception ex)
+                {
+                    // 一時的に読めないだけの場合もあるため、ほかの PC で更新された
+                    // 新しいデータを上書きしないよう、このグループは飛ばす
+                    ApplicationLogger.LogError("手動同期のクラウドデータ取得", ex);
+                    allDownloaded = false;
+                    continue;
+                }
+
                 var localTimestamp =
                     await _syncTimestampStore.GetAsync(group.Id)
                     ?? DateTime.MinValue;
                 var local = SyncGroupData.FromGroup(group, localTimestamp);
-                remoteById.TryGetValue(group.Id, out var remote);
 
                 if (SyncConflictResolver.ShouldApplyRemote(local, remote))
                 {
@@ -563,9 +675,9 @@ public class MainViewModel : ObservableObject
                 }
             }
 
-            var succeeded =
+            var uploaded =
                 await _cloudSyncService.UploadAllGroupsAsync(uploadTargets);
-            SyncStatusText = succeeded
+            SyncStatusText = allDownloaded && uploaded
                 ? SYNC_STATUS_SYNCED
                 : SYNC_STATUS_FAILED;
         }
@@ -581,11 +693,15 @@ public class MainViewModel : ObservableObject
     /// ローカルより新しい場合のみ適用します。
     /// </summary>
     /// <param name="groupId">グループID。</param>
-    private async Task DownloadAndApplyGroupAsync(int groupId)
+    /// <returns>
+    /// ダウンロードと適用に成功した場合は true（クラウドにデータが無く、適用するものが無い場合を含む）。
+    /// 読み込みや適用に失敗した場合は false。
+    /// </returns>
+    private async Task<bool> DownloadAndApplyGroupAsync(int groupId)
     {
         if (_cloudSyncService is null || _syncTimestampStore is null)
         {
-            return;
+            return false;
         }
 
         try
@@ -594,7 +710,7 @@ public class MainViewModel : ObservableObject
             var group = GroupList.FirstOrDefault(g => g.Id == groupId);
             if (group is null || remote is null)
             {
-                return;
+                return true;
             }
 
             var localTimestamp =
@@ -606,10 +722,13 @@ public class MainViewModel : ObservableObject
             {
                 await ApplyRemoteGroupAsync(group, remote);
             }
+
+            return true;
         }
         catch (Exception ex)
         {
             ApplicationLogger.LogError("クラウドデータ取得", ex);
+            return false;
         }
     }
 
@@ -711,7 +830,7 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 「当たったら除外」設定を保存し、失敗時はログに記録します。
+    /// 「当たったら除外」設定を保存し、失敗時は利用者に知らせます。
     /// </summary>
     /// <param name="groupId">保存対象グループの識別子。</param>
     /// <param name="excludeOnWin">「当たったら除外」の有効状態。</param>
@@ -724,7 +843,10 @@ public class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ApplicationLogger.LogError("当たったら除外設定保存", ex);
+            ReportSaveFailure(
+                "当たったら除外設定保存",
+                "「当たったら除外」の設定を保存できませんでした。",
+                ex);
         }
     }
 
@@ -764,8 +886,10 @@ public class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            SaveStatusText = SAVE_STATUS_FAILED;
-            ApplicationLogger.LogError("グループ名保存", ex);
+            ReportSaveFailure(
+                "グループ名保存",
+                $"リスト名「{displayName}」を保存できませんでした。",
+                ex);
         }
     }
 
@@ -831,13 +955,13 @@ public class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            SaveStatusText = SAVE_STATUS_FAILED;
-            ApplicationLogger.LogError("グループ追加", ex);
+            ReportSaveFailure("グループ追加", "リストを追加できませんでした。", ex);
         }
     }
 
     /// <summary>
     /// 選択中のグループを複製して選択します。
+    /// アイテムの有効・無効と「当たったら除外」の設定も引き継ぎます。
     /// </summary>
     private async Task DuplicateGroupAsync()
     {
@@ -852,10 +976,7 @@ public class MainViewModel : ObservableObject
             var sourceGroup = SelectedGroup;
             var displayName = $"{sourceGroup.DisplayName} Copy";
             var copiedItems = sourceGroup.Items
-                .Select(item => new RouletteItem(item.Name)
-                {
-                    Weight = item.Weight,
-                })
+                .Select(CloneItem)
                 .ToList();
             var group = await _groupRepository.AddGroupAsync(
                 displayName,
@@ -864,6 +985,10 @@ public class MainViewModel : ObservableObject
             group.Items = copiedItems;
             await _itemRepository.SaveItemsByGroupAsync(group.Id, copiedItems);
 
+            group.ExcludeOnWin = sourceGroup.ExcludeOnWin;
+            await _groupRepository.SaveGroupExcludeOnWinAsync(
+                group.Id, group.ExcludeOnWin);
+
             GroupList.Add(group);
             SelectedGroup = group;
             SaveStatusText = SAVE_STATUS_SAVED;
@@ -871,8 +996,7 @@ public class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            SaveStatusText = SAVE_STATUS_FAILED;
-            ApplicationLogger.LogError("グループ複製", ex);
+            ReportSaveFailure("グループ複製", "リストを複製できませんでした。", ex);
         }
     }
 
@@ -914,8 +1038,7 @@ public class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            SaveStatusText = SAVE_STATUS_FAILED;
-            ApplicationLogger.LogError("グループ削除", ex);
+            ReportSaveFailure("グループ削除", "リストを削除できませんでした。", ex);
         }
     }
 
@@ -971,8 +1094,7 @@ public class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            SaveStatusText = SAVE_STATUS_FAILED;
-            ApplicationLogger.LogError("グループ並び替え", ex);
+            ReportSaveFailure("グループ並び替え", "リストの並び順を保存できませんでした。", ex);
         }
     }
 
@@ -1514,8 +1636,11 @@ public class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            SaveStatusText = SAVE_STATUS_FAILED;
-            ApplicationLogger.LogError("アイテム保存", ex);
+            ReportSaveFailure(
+                "アイテム保存",
+                $"「{group.DisplayName}」のアイテムの変更を保存できませんでした。"
+                + "アイテムをもう一度編集すると、保存し直します。",
+                ex);
         }
         finally
         {

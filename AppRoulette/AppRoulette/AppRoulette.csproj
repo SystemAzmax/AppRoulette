@@ -32,7 +32,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+    <!-- Windows App SDK は、使う部品のパッケージだけを参照する（使わない Windows ML や AI の DLL を配布物に含めないため）。
+         WinUI の部品が Base / Foundation / InteractiveExperiences を引き込む。
+         Runtime は、ストア版をフレームワーク パッケージ（Microsoft.WindowsAppRuntime.2）に依存させるために参照する。
+         更新するときは、2 つを同じバージョンにする（パッケージ用の wapproj も同じ） -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.4" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" Version="2.6.4" />
     <PackageReference Include="Microsoft.Graphics.Win2D" Version="1.4.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />

@@ -9,13 +9,20 @@
 | --- | --- | --- |
 | 形式 | MSIX パッケージ | パッケージなし（unpackaged） |
 | ビルドに使うプロジェクト | `AppRoulette (Package)` | `AppRoulette` |
-| 出力 | `.msixupload` | exe を含むフォルダー（約 270 MB） |
+| 出力 | `.msixupload` | exe を含むフォルダー（約 225 MB） |
 | 配布先の PC に必要なもの | なし（ストアからインストール） | なし（.NET と Windows App SDK を同梱） |
 | データの保存先 | `%LOCALAPPDATA%\Packages\<パッケージ名>\LocalCache\Local\AppRoulette` | `%LOCALAPPDATA%\AppRoulette` |
+| エラーのログ | `%LOCALAPPDATA%\Packages\<パッケージ名>\LocalState\logs\error.log` | `%LOCALAPPDATA%\AppRoulette\logs\error.log` |
 
 どちらもコード上は `%LOCALAPPDATA%\AppRoulette` に保存します。
 ストア版は MSIX が書き込み先をパッケージ専用のフォルダーに
 リダイレクトするため、2 つの版でデータは共有されません。
+
+エラーのログは、保存の失敗や予期しない例外を、リリース版でも記録するためのものです。
+1 MB を超えると `error.old.log` に移して、新しく書き始めます。
+エラーが起きたときにウィンドウの上部に出る帯の **ログを開く** から開けます。
+ストア版のログは、リダイレクトされない `LocalState` に置いています
+（リダイレクト先だと、アプリからメモ帳などに渡したパスで開けないため）。
 
 ## バージョンの上げ方
 
@@ -36,12 +43,77 @@
 アプリと一緒に配布するソフトウェアのライセンスを、原文のまま並べたものです。
 NuGet パッケージを追加・更新したときや、.NET のランタイムを更新したときは、このファイルも更新してください。
 
+ファイルは `tools\notices\build-notices.sh` で作ります。
+
+1. スクリプトに書いてあるパッケージのバージョン（フォルダー名と、冒頭の一覧・各節の見出し）を、
+   使っているバージョンに書き換えます。パッケージを追加したときは、節も追加します。
+2. 一度ビルドして、NuGet のキャッシュにパッケージを取得しておきます。
+3. Git Bash で、リポジトリのフォルダーから次を実行します。
+   `AppRoulette\AppRoulette\ThirdPartyNotices.txt` が上書きされます。
+
+   ```bash
+   bash tools/notices/build-notices.sh
+   ```
+
+各節の取り出し元は次のとおりです。
+
 - 各節の内容は、`%USERPROFILE%\.nuget\packages\<パッケージ名>\<バージョン>\` にある
   `LICENSE.txt`、`License.md`、`NOTICE.txt`、`ThirdPartyNotices.txt` などから取っています。
   .NET の節は `microsoft.netcore.app.runtime.win-x64` の `LICENSE.TXT` と `THIRD-PARTY-NOTICES.TXT` です。
 - パッケージにライセンスファイルが無い Microsoft.Data.Sqlite と SQLitePCLRaw は、
-  それぞれのリポジトリ（dotnet/efcore、ericsink/SQLitePCL.raw）の LICENSE から取っています。
-- 冒頭の一覧に書いたバージョンも、合わせて書き換えます。
+  それぞれのリポジトリ（dotnet/efcore、ericsink/SQLitePCL.raw）の LICENSE を
+  `tools\notices\licenses` に置いて、そこから取っています。
+- Windows App SDK の付録は、`microsoft.windowsappsdk.base` の `NOTICE.txt` から取っています。
+  SDK 全体の表示で、WinUI の部品の `NOTICE.txt` の内容も含んでいます。
+
+## アイコンとパッケージ画像の作り直し
+
+exe とウィンドウのアイコン（`AppRoulette\AppRoulette\Copilot_20260614_202528.ico`）と、
+ストア版のパッケージ画像（`AppRoulette\AppRoulette (Package)\Images`）は、
+元画像 `docs\Copilot_20260614_202528.png`（背景あり、1024px）から、`tools\icon` のスクリプトで作っています。
+どちらも System.Drawing を使うため、Windows PowerShell 5.1（`powershell`）で実行します。
+
+1. 元画像から、透明背景の円形の画像（1024px）と ico を作ります。
+   出力先には、作業用のフォルダーを指定します。
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File tools\icon\build-icon.ps1 -OutDir $env:TEMP\AppRouletteIcon
+   ```
+
+   - `icon-master-1024.png`: 透明背景の円形の画像（次の手順で使います）
+   - `AppRoulette.ico`: 16〜256px の 10 サイズを含む ico
+   - `preview-small.png`、`preview-large.png`: 確認用のプレビュー
+2. `AppRoulette.ico` を、`AppRoulette\AppRoulette\Copilot_20260614_202528.ico` に上書きコピーします。
+3. パッケージ画像を作ります。`AppRoulette\AppRoulette (Package)\Images` の 67 枚が上書きされます。
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File tools\icon\build-package-images.ps1 -MasterPath $env:TEMP\AppRouletteIcon\icon-master-1024.png -PreviewPath $env:TEMP\AppRouletteIcon\preview-package.png
+   ```
+
+- 元画像の円はわずかに横長の楕円なので、`build-icon.ps1` の引数（`-Cx`、`-Cy`、`-Rx`、`-Ry`）で
+  中心と横・縦の半径を指定しています。元画像を差し替えるときは、これも合わせて変えます。
+- 画像の種類や大きさを変えたときは、`Package.appxmanifest` の指定も合わせて確認してください。
+
+## Windows App SDK の参照と更新
+
+Windows App SDK は、メタパッケージ（`Microsoft.WindowsAppSDK`）ではなく、
+使う部品のパッケージだけを参照しています。
+使わない Windows ML や AI の DLL を、配布物に含めないためです。
+
+| パッケージ | 役割 |
+| --- | --- |
+| `Microsoft.WindowsAppSDK.WinUI` | WinUI 3。依存先の Base、Foundation、InteractiveExperiences（ウィンドウや Composition）も入る |
+| `Microsoft.WindowsAppSDK.Runtime` | ストア版を、フレームワーク パッケージ `Microsoft.WindowsAppRuntime.2` に依存させる |
+
+- `AppRoulette.csproj` と `AppRoulette (Package).wapproj` の両方で、2 つを同じバージョンにそろえて参照します。
+  そろっていないと、ストア版のビルドがエラーになります。
+- Windows App SDK の API を新しく使うときは、その API がどの部品に入っているかを確かめます。
+  上の依存先に無い部品（`Microsoft.WindowsAppSDK.AI` など）なら、そのパッケージを追加します。
+
+更新するときは、部品のパッケージ（`microsoft.windowsappsdk.winui` など）の `license.txt` を開き、
+題名が「ENGINEERING PREVIEW」になっていないか確かめてください。
+2.0.1〜2.3.1 は Windows App SDK が安定版でも、WinUI の部品にプレビュー版のライセンス
+（本番環境での使用と再配布を禁じるもの）が付いていました。2.4.0 以降は通常のライセンスです。
 
 ## ストア版のビルド
 
@@ -140,18 +212,22 @@ Visual Studio でデバッグ実行したときのデータは、パッケージ
 アプリを閉じてから、PowerShell で次を実行します。
 
 ```powershell
-$src = "$env:LOCALAPPDATA\Packages\91d0b9ad-65b1-4502-ac9c-d13dc83c4750_zegbcpgrcgmda\LocalCache\Local\AppRoulette"
+$src = "$env:LOCALAPPDATA\Packages\F0C48714.AppRoulette_97pagdhhke8ew\LocalCache\Local\AppRoulette"
 $dst = "$env:LOCALAPPDATA\AppRoulette"
 New-Item -ItemType Directory -Force $dst | Out-Null
 Copy-Item "$src\*" $dst -Force
 ```
 
-- パッケージ フォルダー名は、`Package.appxmanifest` の `Identity` の `Name` で始まります。
-  ストアからインストールした版はパッケージ名が変わるので、
-  `%LOCALAPPDATA%\Packages` の中で探してください。
+- パッケージ フォルダー名は「`Package.appxmanifest` の `Identity` の `Name`」と
+  「`Publisher` から計算される値」を `_` でつないだものです。
+  PowerShell の `Get-AppxPackage -Name F0C48714.AppRoulette` でも確認できます（`PackageFamilyName`）。
+- ストアからインストールした版も、同じフォルダーを使います（下の「注意点」を参照）。
+- ストアと関連付ける前のデバッグ版のデータは、
+  `91d0b9ad-65b1-4502-ac9c-d13dc83c4750_zegbcpgrcgmda` のフォルダーに残っています。
+  そのデータをコピーするときは、`$src` のフォルダー名をこちらに変えます。
 - コピー先に既にデータがある場合は上書きされます。必要なら先にバックアップします。
-- `Packages\...\LocalState\roulette.db` は以前の保存場所に残った古いファイルなので、
-  コピーは不要です。
+- `LocalCache` と同じ階層の `LocalState` にあるのはエラーのログ（`logs\error.log`）で、コピーは不要です。
+  関連付け前のフォルダーの `LocalState\roulette.db` は、以前の保存場所に残った古いファイルです。
 - コピーは 1 回限りです。その後はそれぞれの版が別々にデータを更新します。
 
 ## 注意点
@@ -171,3 +247,11 @@ Copy-Item "$src\*" $dst -Force
 - **版を切り替えたらリビルドする**:
   exe 版とストア版は同じ `bin` / `obj` フォルダーを使います。
   exe 版を発行した後にストア版を作るときは、念のためリビルドしてください。
+- **デバッグ実行する版とストアからインストールした版は、同じパッケージになる**:
+  ストアと関連付けたため、Visual Studio でデバッグ実行する版も、
+  ストアからインストールした版も、パッケージ名は `F0C48714.AppRoulette` です。
+  同じ PC に両方を入れることはできず、データの保存先も同じフォルダーになります。
+  ストア版をインストールした PC でデバッグ実行すると、配置に失敗したり、
+  ストア版のアンインストールを求められたりすることがあります。
+  アンインストールするとそのデータ（パッケージのフォルダー）も消えるので、
+  先にアプリの **バックアップ保存** で、すべてのリストを保存しておいてください。

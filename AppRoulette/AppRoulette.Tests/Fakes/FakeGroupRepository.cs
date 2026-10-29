@@ -12,11 +12,26 @@ internal class FakeGroupRepository : IGroupRepository
     private int _nextId = 1;
 
     /// <summary>
+    /// グループ一覧の取得で例外を投げるかどうかを取得または設定します。
+    /// </summary>
+    public bool ShouldFailOnLoad { get; set; }
+
+    /// <summary>
+    /// グループの追加で例外を投げるかどうかを取得または設定します。
+    /// </summary>
+    public bool ShouldFailOnAdd { get; set; }
+
+    /// <summary>
     /// 有効なグループ一覧を表示順で非同期に取得します。
     /// </summary>
     /// <returns>有効なグループ一覧。</returns>
     public Task<IReadOnlyList<RouletteGroup>> GetGroupsAsync()
     {
+        if (ShouldFailOnLoad)
+        {
+            throw new IOException("テスト用の読み込み失敗");
+        }
+
         var groups = _groups
             .Where(g => !g.IsDeleted)
             .OrderBy(g => g.SortOrder)
@@ -106,6 +121,11 @@ internal class FakeGroupRepository : IGroupRepository
     /// <returns>追加されたグループ。</returns>
     public Task<RouletteGroup> AddGroupAsync(string displayName, int sortOrder)
     {
+        if (ShouldFailOnAdd)
+        {
+            throw new IOException("テスト用の保存失敗");
+        }
+
         var group = new GroupRecord(_nextId++, displayName, sortOrder, isDeleted: false);
         _groups.Add(group);
         return Task.FromResult(new RouletteGroup(group.Id, group.DisplayName));

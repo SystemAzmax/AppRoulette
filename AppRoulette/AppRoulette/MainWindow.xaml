@@ -18,6 +18,10 @@
         ルート Grid: 左列（ルーレット）/ 中央列（リスト項目タブ）/ 右列（操作パネル）
     -->
     <Grid Margin="16" Loaded="OnRootGridLoaded" PreviewKeyDown="OnRootGridPreviewKeyDown">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="16" />
@@ -26,8 +30,26 @@
             <ColumnDefinition Width="300" />
         </Grid.ColumnDefinitions>
 
+        <!--
+            保存の失敗や予期しないエラーを知らせる帯。利用者が閉じるまで表示する。
+            閉じているときに Margin の分の隙間が残らないよう、Visibility も IsErrorOpen に合わせる。
+        -->
+        <InfoBar
+            Grid.Row="0"
+            Grid.ColumnSpan="5"
+            Margin="0,0,0,12"
+            Severity="Error"
+            Title="{x:Bind ViewModel.ErrorTitle, Mode=OneWay}"
+            Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+            IsOpen="{x:Bind ViewModel.IsErrorOpen, Mode=TwoWay}"
+            Visibility="{x:Bind ViewModel.IsErrorOpen, Mode=OneWay}">
+            <InfoBar.ActionButton>
+                <Button Content="ログを開く" Click="OnOpenErrorLogButtonClick" />
+            </InfoBar.ActionButton>
+        </InfoBar>
+
         <!-- ===== 左列：ルーレット描画エリア ===== -->
-        <Grid Grid.Column="0">
+        <Grid Grid.Row="1" Grid.Column="0">
 
             <!-- Win2D CanvasControl（扇形描画・インジケーター含む） -->
             <canvas:CanvasControl
@@ -41,6 +63,7 @@
 
         <!-- ===== 中央列：リスト項目タブ（詳細 / テキスト） ===== -->
         <Grid
+            Grid.Row="1"
             Grid.Column="2"
             Margin="4,4,4,0"
             VerticalAlignment="Stretch">
@@ -225,6 +248,7 @@
 
         <!-- ===== 右列：操作パネル ===== -->
         <ScrollViewer
+            Grid.Row="1"
             Grid.Column="4"
             VerticalScrollBarVisibility="Auto">
             <!--

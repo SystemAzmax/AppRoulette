@@ -9,6 +9,12 @@ namespace AppRoulette.Services;
 public interface ICloudSyncService
 {
     /// <summary>
+    /// 同期先のフォルダーが検出され、同期が利用可能かどうかを
+    /// 取得します。
+    /// </summary>
+    bool IsAvailable { get; }
+
+    /// <summary>
     /// 1グループ分のデータをクラウドへアップロードします。
     /// </summary>
     /// <param name="group">アップロードするグループデータ。</param>
@@ -20,13 +26,10 @@ public interface ICloudSyncService
     /// </summary>
     /// <param name="groupId">グループID。</param>
     /// <returns>グループデータ。存在しない場合は null。</returns>
+    /// <remarks>
+    /// 読み込めない場合は、存在しない場合と区別できるよう、null ではなく例外を投げます。
+    /// </remarks>
     Task<SyncGroupData?> DownloadGroupAsync(int groupId);
-
-    /// <summary>
-    /// クラウド上の全グループデータをダウンロードします。
-    /// </summary>
-    /// <returns>グループデータの一覧。存在しない場合は空。</returns>
-    Task<IReadOnlyList<SyncGroupData>> DownloadAllGroupsAsync();
 
     /// <summary>
     /// 全グループのデータをクラウドへ一括アップロードします。

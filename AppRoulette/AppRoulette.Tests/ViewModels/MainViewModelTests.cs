@@ -51,7 +51,9 @@ public class MainViewModelTests
         FakeGroupRepository? customGroupRepository = null,
         FakeAppSettingsRepository? customSettingsRepository = null,
         FakeDialogService? dialogService = null,
-        FakeBackupRepository? backupRepository = null)
+        FakeBackupRepository? backupRepository = null,
+        ICloudSyncService? cloudSyncService = null,
+        SyncTimestampStore? syncTimestampStore = null)
     {
         FakeItemRepository fakeRepo = customRepository ?? new FakeItemRepository();
         FakeGroupRepository fakeGroupRepo = customGroupRepository ?? new FakeGroupRepository();
@@ -71,9 +73,45 @@ public class MainViewModelTests
             fakeRepo,
             fakeGroupRepo,
             fakeSettingsRepository,
-            dialogService: dialogService,
-            backupRepository: backupRepository);
+            cloudSyncService,
+            syncTimestampStore,
+            dialogService,
+            backupRepository);
     }
+
+    /// <summary>
+    /// 書き込まれることのない一時ファイルのパスで、同期タイムスタンプストアを生成します。
+    /// </summary>
+    private static SyncTimestampStore CreateUnusedTimestampStore()
+    {
+        return new SyncTimestampStore(Path.Combine(
+            Path.GetTempPath(),
+            "AppRouletteTests",
+            Guid.NewGuid().ToString(),
+            "syncTimestamps.json"));
+    }
+
+    /// <summary>
+    /// 条件を満たすまで、最大 5 秒待ちます。
+    /// 自動保存のように、遅れて終わる処理の結果を確かめるときに使います。
+    /// </summary>
+    /// <param name="condition">待つ条件。</param>
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+    }
+
+    /// <summary>
+    /// 予約された自動保存が終わり、保存状態が「保存済み」になるまで待ちます。
+    /// 編集から保存までは遅れがあるため、決まった時間だけ待つと、遅い環境で保存の前に確かめてしまいます。
+    /// </summary>
+    /// <param name="sut">自動保存を待つ ViewModel。</param>
+    private static Task WaitForAutoSaveAsync(MainViewModel sut) =>
+        WaitUntilAsync(() => sut.SaveStatusText == "保存済み");
 
     // ---------------------------------------------------------------
     // InitializeAsync
@@ -345,6 +383,41 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task DuplicateGroupCommand_無効なアイテムと当たったら除外がある場合_引き継いで保存する()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var fakeItemRepo = new FakeItemRepository();
+        fakeItemRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", groupId: 1),
+            new("アイテムB", groupId: 1) { IsEnabled = false },
+            new("アイテムC", groupId: 1),
+        });
+        var sut = CreateSut(
+            customRepository: fakeItemRepo,
+            customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.IsExcludeOnWinEnabled = true;
+
+        // Act
+        await sut.DuplicateGroupCommand.ExecuteAsync(null);
+
+        var restartedSut = CreateSut(
+            customRepository: fakeItemRepo,
+            customGroupRepository: fakeGroupRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("Roulette1 Copy", sut.SelectedGroup!.DisplayName);
+        Assert.True(sut.IsExcludeOnWinEnabled);
+        Assert.Equal(new[] { true, false, true }, sut.SelectedGroup.Items.Select(item => item.IsEnabled));
+        var restartedCopy = restartedSut.GroupList[9];
+        Assert.True(restartedCopy.ExcludeOnWin);
+        Assert.Equal(new[] { true, false, true }, restartedCopy.Items.Select(item => item.IsEnabled));
+    }
+
+    [Fact]
     public async Task DeleteGroupCommand_実行した場合_グループとアイテムを削除する()
     {
         // Arrange
@@ -483,7 +556,7 @@ public class MainViewModelTests
 
         // Act
         await sut.ClearItemsCommand.ExecuteAsync(null);
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         var items = await fakeItemRepo.GetItemsByGroupAsync(1);
 
@@ -567,7 +640,7 @@ public class MainViewModelTests
 
         // Act
         await sut.ImportItemsFromCsvAsync("アイテムX,5");
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         var items = await fakeRepo.GetItemsByGroupAsync(1);
 
@@ -927,7 +1000,7 @@ public class MainViewModelTests
         Assert.Equal("保存中", sut.SaveStatusText);
 
         // 非同期保存の完了を待つ
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         // Assert - SQLite にアイテムが増えていることを確認
         var itemsAfter = await fakeRepo.GetItemsAsync();
@@ -945,10 +1018,10 @@ public class MainViewModelTests
 
         // Act
         sut.ItemsText = "アイテム1";
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
         sut.ItemsText = "アイテムA"; // 行数変化なし
 
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         // Assert
         var items = await fakeRepo.GetItemsByGroupAsync(1);
@@ -994,7 +1067,7 @@ public class MainViewModelTests
 
         // Act
         sut.ItemsText = "アイテムA,4";
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         // Assert
         var items = await fakeRepo.GetItemsByGroupAsync(1);
@@ -1013,7 +1086,7 @@ public class MainViewModelTests
 
         // Act
         sut.ItemsText = "アイテムA,5\nアイテムB,2";
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         var restartedSut = CreateSut(customRepository: fakeRepo);
         await restartedSut.InitializeCommand.ExecuteAsync(null);
@@ -1561,7 +1634,7 @@ public class MainViewModelTests
 
         // Act
         sut.EditableItems[1].IsEnabled = false;
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         var restartedSut = CreateSut(customRepository: fakeRepo);
         await restartedSut.InitializeCommand.ExecuteAsync(null);
@@ -1593,7 +1666,7 @@ public class MainViewModelTests
 
         // Act
         sut.ExcludeWinnerIfNeeded();
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         var restartedSut = CreateSut(customRepository: fakeRepo);
         await restartedSut.InitializeCommand.ExecuteAsync(null);
@@ -1616,5 +1689,249 @@ public class MainViewModelTests
 
         // Assert
         Assert.True(sut.SelectedGroup!.ExcludeOnWin);
+    }
+
+    // ---------------------------------------------------------------
+    // OneDrive 同期の可否
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public void IsSyncAvailable_OneDriveフォルダーが見つからない場合_同期できない()
+    {
+        // Arrange
+        var sut = CreateSut(
+            cloudSyncService: new OneDriveFolderSyncService(baseDir: null),
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        var isAvailable = sut.IsSyncAvailable;
+        var canSync = sut.SyncAllCommand.CanExecute(null);
+
+        // Assert
+        Assert.False(isAvailable);
+        Assert.False(canSync);
+    }
+
+    [Fact]
+    public void IsSyncAvailable_OneDriveフォルダーが見つかった場合_同期できる()
+    {
+        // Arrange（フォルダーは作らない。可否の判定だけを確かめる）
+        var baseDir = Path.Combine(
+            Path.GetTempPath(),
+            "AppRouletteTests",
+            Guid.NewGuid().ToString());
+        var sut = CreateSut(
+            cloudSyncService: new OneDriveFolderSyncService(baseDir),
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        var isAvailable = sut.IsSyncAvailable;
+        var canSync = sut.SyncAllCommand.CanExecute(null);
+
+        // Assert
+        Assert.True(isAvailable);
+        Assert.True(canSync);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_OneDriveフォルダーが見つからない場合_同期済みと表示しない()
+    {
+        // Arrange
+        var sut = CreateSut(
+            cloudSyncService: new OneDriveFolderSyncService(baseDir: null),
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期待機", sut.SyncStatusText);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_OneDriveにデータが無い場合_同期済みと表示する()
+    {
+        // Arrange
+        var sut = CreateSut(
+            cloudSyncService: new FakeCloudSyncService(),
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期済み", sut.SyncStatusText);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_OneDriveのデータを読み込めない場合_同期失敗と表示する()
+    {
+        // Arrange
+        var sut = CreateSut(
+            cloudSyncService: new FakeCloudSyncService { UnreadableGroupIds = { 1 } },
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期失敗", sut.SyncStatusText);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_OneDriveの新しいデータを適用できない場合_同期失敗と表示する()
+    {
+        // Arrange（クラウドに新しいデータがあり、手元への保存に失敗する）
+        var remoteGroup = new RouletteGroup(1, "クラウドの名前");
+        remoteGroup.TryAddItem(new RouletteItem("クラウドのアイテム"));
+        var cloudSyncService = new FakeCloudSyncService();
+        cloudSyncService.SetRemoteGroup(SyncGroupData.FromGroup(remoteGroup, DateTime.UtcNow));
+        var fakeRepo = new FakeItemRepository { ShouldFailOnSave = true };
+        var sut = CreateSut(
+            customRepository: fakeRepo,
+            cloudSyncService: cloudSyncService,
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期失敗", sut.SyncStatusText);
+    }
+
+    [Fact]
+    public async Task SyncAllCommand_読めない同期ファイルがある場合_そのリストは上書きせず同期失敗と表示する()
+    {
+        // Arrange（クラウドにリスト 1 のデータがあるが、同期ファイルを読めない）
+        var remoteGroup = new RouletteGroup(1, "クラウドの名前");
+        remoteGroup.TryAddItem(new RouletteItem("クラウドのアイテム"));
+        var cloudSyncService = new FakeCloudSyncService { UnreadableGroupIds = { 1 } };
+        cloudSyncService.SetRemoteGroup(SyncGroupData.FromGroup(remoteGroup, DateTime.UtcNow));
+        var sut = CreateSut(
+            cloudSyncService: cloudSyncService,
+            syncTimestampStore: CreateUnusedTimestampStore());
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.SyncAllCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期失敗", sut.SyncStatusText);
+        Assert.Equal("クラウドの名前", cloudSyncService.GetRemoteGroup(1)?.DisplayName);
+        Assert.Equal("Roulette2", cloudSyncService.GetRemoteGroup(2)?.DisplayName);
+    }
+
+    [Fact]
+    public async Task SyncAllCommand_すべて読めた場合_同期済みと表示する()
+    {
+        // Arrange
+        var cloudSyncService = new FakeCloudSyncService();
+        var sut = CreateSut(
+            cloudSyncService: cloudSyncService,
+            syncTimestampStore: CreateUnusedTimestampStore());
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.SyncAllCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期済み", sut.SyncStatusText);
+        Assert.Equal("Roulette1", cloudSyncService.GetRemoteGroup(1)?.DisplayName);
+    }
+
+    // ---------------------------------------------------------------
+    // エラーの知らせ
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public async Task ItemsText_自動保存に失敗した場合_利用者に知らせる()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        var sut = CreateSut(customRepository: fakeRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        fakeRepo.ShouldFailOnSave = true;
+
+        // Act
+        sut.ItemsText = "アイテムA";
+        await WaitUntilAsync(() => sut.SaveStatusText == "保存失敗");
+
+        // Assert
+        Assert.Equal("保存失敗", sut.SaveStatusText);
+        Assert.True(sut.IsErrorOpen);
+        Assert.Equal("保存できませんでした", sut.ErrorTitle);
+        Assert.Contains("「Roulette1」のアイテムの変更を保存できませんでした", sut.ErrorMessage);
+        Assert.Contains("テスト用の保存失敗", sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ItemsText_自動保存に成功した場合_知らせを出さない()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.ItemsText = "アイテムA";
+        await WaitForAutoSaveAsync(sut);
+
+        // Assert
+        Assert.Equal("保存済み", sut.SaveStatusText);
+        Assert.False(sut.IsErrorOpen);
+    }
+
+    [Fact]
+    public async Task AddGroupCommand_保存に失敗した場合_利用者に知らせる()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var sut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        fakeGroupRepo.ShouldFailOnAdd = true;
+
+        // Act
+        await sut.AddGroupCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("保存失敗", sut.SaveStatusText);
+        Assert.True(sut.IsErrorOpen);
+        Assert.Contains("リストを追加できませんでした", sut.ErrorMessage);
+        Assert.Equal(9, sut.GroupList.Count);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_読み込みに失敗した場合_落ちずに利用者に知らせる()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository { ShouldFailOnLoad = true };
+        var sut = CreateSut(customGroupRepository: fakeGroupRepo);
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(sut.IsErrorOpen);
+        Assert.Equal("データを読み込めませんでした", sut.ErrorTitle);
+        Assert.Contains("テスト用の読み込み失敗", sut.ErrorMessage);
+        Assert.Equal("読み込み失敗", sut.SaveStatusText);
+        Assert.Empty(sut.GroupList);
+        Assert.Null(sut.SelectedGroup);
+    }
+
+    [Fact]
+    public void ShowError_閉じた後に別のエラーが起きた場合_新しい内容で表示し直す()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.ShowError("1 件目", "1 件目の内容");
+        sut.IsErrorOpen = false;
+
+        // Act
+        sut.ShowError("2 件目", "2 件目の内容");
+
+        // Assert
+        Assert.True(sut.IsErrorOpen);
+        Assert.Equal("2 件目", sut.ErrorTitle);
+        Assert.Equal("2 件目の内容", sut.ErrorMessage);
     }
 }

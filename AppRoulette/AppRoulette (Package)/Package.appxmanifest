@@ -5,19 +5,18 @@
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10"
-  IgnorableNamespaces="uap rescap systemai">
+  IgnorableNamespaces="uap rescap">
 
   <Identity
-    Name="91d0b9ad-65b1-4502-ac9c-d13dc83c4750"
-    Publisher="CN=dqm11"
+    Name="F0C48714.AppRoulette"
+    Publisher="CN=984901FF-A7B3-415C-B173-06EC90101C99"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="91d0b9ad-65b1-4502-ac9c-d13dc83c4750" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>AppRoulette (Package)</DisplayName>
-    <PublisherDisplayName>azmax</PublisherDisplayName>
+    <DisplayName>AppRoulette</DisplayName>
+    <PublisherDisplayName>あずま屋</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
   </Properties>
 
@@ -35,8 +34,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="AppRoulette (Package)"
-        Description="AppRoulette (Package)"
+        DisplayName="AppRoulette"
+        Description="登録したアイテムの中から、ルーレットを回して 1 つを選ぶアプリ"
         BackgroundColor="transparent"
         Square150x150Logo="Images\Square150x150Logo.png"
         Square44x44Logo="Images\Square44x44Logo.png">
@@ -48,6 +47,5 @@
 
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
-    <systemai:Capability Name="systemAIModels"/>
   </Capabilities>
 </Package>

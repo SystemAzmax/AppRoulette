@@ -14,3 +14,7 @@
 # MSIX パッケージの出力
 AppPackages/
 BundleArtifacts/
+
+# パッケージの参照を解決した結果のキャッシュ
+# （wapproj では obj ではなくプロジェクトのフォルダーに作られる）
+*.assets.cache

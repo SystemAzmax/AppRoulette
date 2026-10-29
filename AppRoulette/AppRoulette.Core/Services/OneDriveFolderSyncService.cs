@@ -47,10 +47,7 @@ public class OneDriveFolderSyncService : ICloudSyncService
             : Path.Combine(baseDir, GROUPS_FOLDER);
     }
 
-    /// <summary>
-    /// OneDrive フォルダーが検出され同期が利用可能かどうかを
-    /// 取得します。
-    /// </summary>
+    /// <inheritdoc/>
     public bool IsAvailable => _groupsDir is not null;
 
     /// <inheritdoc/>
@@ -91,57 +88,11 @@ public class OneDriveFolderSyncService : ICloudSyncService
             return null;
         }
 
-        try
-        {
-            var json = await File.ReadAllTextAsync(filePath)
-                .ConfigureAwait(false);
-            return JsonSerializer.Deserialize<SyncGroupData>(
-                json, JSON_OPTIONS);
-        }
-        catch (Exception ex) when (IsSyncException(ex))
-        {
-            ApplicationLogger.LogError("グループ読み込み", ex);
-            return null;
-        }
-    }
-
-    /// <inheritdoc/>
-    public async Task<IReadOnlyList<SyncGroupData>> DownloadAllGroupsAsync()
-    {
-        var results = new List<SyncGroupData>();
-        if (_groupsDir is null || !Directory.Exists(_groupsDir))
-        {
-            return results;
-        }
-
-        try
-        {
-            foreach (var filePath in
-                Directory.EnumerateFiles(_groupsDir, "*.json"))
-            {
-                try
-                {
-                    var json = await File.ReadAllTextAsync(filePath)
-                        .ConfigureAwait(false);
-                    var data = JsonSerializer
-                        .Deserialize<SyncGroupData>(json, JSON_OPTIONS);
-                    if (data is not null)
-                    {
-                        results.Add(data);
-                    }
-                }
-                catch (Exception ex) when (IsSyncException(ex))
-                {
-                    ApplicationLogger.LogError("グループ読み込み", ex);
-                }
-            }
-        }
-        catch (Exception ex) when (IsSyncException(ex))
-        {
-            ApplicationLogger.LogError("グループ一覧取得", ex);
-        }
-
-        return results;
+        // 読み込めない場合は、ファイルが無い場合と区別できるよう例外をそのまま投げる
+        var json = await File.ReadAllTextAsync(filePath)
+            .ConfigureAwait(false);
+        return JsonSerializer.Deserialize<SyncGroupData>(
+            json, JSON_OPTIONS);
     }
 
     /// <inheritdoc/>
