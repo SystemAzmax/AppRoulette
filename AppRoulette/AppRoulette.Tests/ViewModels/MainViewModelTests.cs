@@ -105,6 +105,14 @@ public class MainViewModelTests
         }
     }
 
+    /// <summary>
+    /// 予約された自動保存が終わり、保存状態が「保存済み」になるまで待ちます。
+    /// 編集から保存までは遅れがあるため、決まった時間だけ待つと、遅い環境で保存の前に確かめてしまいます。
+    /// </summary>
+    /// <param name="sut">自動保存を待つ ViewModel。</param>
+    private static Task WaitForAutoSaveAsync(MainViewModel sut) =>
+        WaitUntilAsync(() => sut.SaveStatusText == "保存済み");
+
     // ---------------------------------------------------------------
     // InitializeAsync
     // ---------------------------------------------------------------
@@ -513,7 +521,7 @@ public class MainViewModelTests
 
         // Act
         await sut.ClearItemsCommand.ExecuteAsync(null);
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         var items = await fakeItemRepo.GetItemsByGroupAsync(1);
 
@@ -597,7 +605,7 @@ public class MainViewModelTests
 
         // Act
         await sut.ImportItemsFromCsvAsync("アイテムX,5");
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         var items = await fakeRepo.GetItemsByGroupAsync(1);
 
@@ -957,7 +965,7 @@ public class MainViewModelTests
         Assert.Equal("保存中", sut.SaveStatusText);
 
         // 非同期保存の完了を待つ
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         // Assert - SQLite にアイテムが増えていることを確認
         var itemsAfter = await fakeRepo.GetItemsAsync();
@@ -975,10 +983,10 @@ public class MainViewModelTests
 
         // Act
         sut.ItemsText = "アイテム1";
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
         sut.ItemsText = "アイテムA"; // 行数変化なし
 
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         // Assert
         var items = await fakeRepo.GetItemsByGroupAsync(1);
@@ -1024,7 +1032,7 @@ public class MainViewModelTests
 
         // Act
         sut.ItemsText = "アイテムA,4";
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         // Assert
         var items = await fakeRepo.GetItemsByGroupAsync(1);
@@ -1043,7 +1051,7 @@ public class MainViewModelTests
 
         // Act
         sut.ItemsText = "アイテムA,5\nアイテムB,2";
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         var restartedSut = CreateSut(customRepository: fakeRepo);
         await restartedSut.InitializeCommand.ExecuteAsync(null);
@@ -1591,7 +1599,7 @@ public class MainViewModelTests
 
         // Act
         sut.EditableItems[1].IsEnabled = false;
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         var restartedSut = CreateSut(customRepository: fakeRepo);
         await restartedSut.InitializeCommand.ExecuteAsync(null);
@@ -1623,7 +1631,7 @@ public class MainViewModelTests
 
         // Act
         sut.ExcludeWinnerIfNeeded();
-        await Task.Delay(100);
+        await WaitForAutoSaveAsync(sut);
 
         var restartedSut = CreateSut(customRepository: fakeRepo);
         await restartedSut.InitializeCommand.ExecuteAsync(null);
@@ -1739,7 +1747,7 @@ public class MainViewModelTests
 
         // Act
         sut.ItemsText = "アイテムA";
-        await WaitUntilAsync(() => sut.SaveStatusText == "保存済み");
+        await WaitForAutoSaveAsync(sut);
 
         // Assert
         Assert.Equal("保存済み", sut.SaveStatusText);
@@ -1779,6 +1787,7 @@ public class MainViewModelTests
         Assert.True(sut.IsErrorOpen);
         Assert.Equal("データを読み込めませんでした", sut.ErrorTitle);
         Assert.Contains("テスト用の読み込み失敗", sut.ErrorMessage);
+        Assert.Equal("読み込み失敗", sut.SaveStatusText);
         Assert.Empty(sut.GroupList);
         Assert.Null(sut.SelectedGroup);
     }

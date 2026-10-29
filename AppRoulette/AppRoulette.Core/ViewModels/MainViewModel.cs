@@ -25,6 +25,8 @@ public class MainViewModel : ObservableObject
 
     private const string SAVE_STATUS_FAILED = "保存失敗";
 
+    private const string SAVE_STATUS_LOAD_FAILED = "読み込み失敗";
+
     private const string SAVE_FAILED_TITLE = "保存できませんでした";
 
     private const string LOAD_FAILED_TITLE = "データを読み込めませんでした";
@@ -525,6 +527,7 @@ public class MainViewModel : ObservableObject
         {
             // データベースを開けないなどで読み込めない場合も、アプリを落とさずに知らせる
             ApplicationLogger.LogError("データ読み込み", ex);
+            SaveStatusText = SAVE_STATUS_LOAD_FAILED;
             ShowError(
                 LOAD_FAILED_TITLE,
                 "保存しているリストとアイテムを読み込めませんでした。"
