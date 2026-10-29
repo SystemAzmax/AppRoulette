@@ -8,8 +8,8 @@
   IgnorableNamespaces="uap rescap">
 
   <Identity
-    Name="91d0b9ad-65b1-4502-ac9c-d13dc83c4750"
-    Publisher="CN=dqm11"
+    Name="F0C48714.AppRoulette"
+    Publisher="CN=984901FF-A7B3-415C-B173-06EC90101C99"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="91d0b9ad-65b1-4502-ac9c-d13dc83c4750" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
