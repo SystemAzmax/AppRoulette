@@ -351,6 +351,35 @@ namespace AppRoulette
         }
 
         /// <summary>
+        /// エラーの知らせにある「ログを開く」ボタンのクリックイベントを処理します。
+        /// エラーのログファイルを、既定のアプリで開きます。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnOpenErrorLogButtonClick(object sender, RoutedEventArgs e)
+        {
+            var path = ApplicationLogger.LogFilePath;
+            if (path is null)
+            {
+                return;
+            }
+
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("ログ表示", ex);
+                await _dialogService.ShowMessageAsync(
+                    "ログ",
+                    "ログファイルを開けませんでした。"
+                    + $"\n\nファイル: {path}\n詳細: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// ViewModel のアイテムテキストを下部テキストボックスに反映します。
         /// </summary>
         private void UpdateItemsTextBoxFromViewModel()

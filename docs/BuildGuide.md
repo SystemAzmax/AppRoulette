@@ -12,10 +12,17 @@
 | 出力 | `.msixupload` | exe を含むフォルダー（約 225 MB） |
 | 配布先の PC に必要なもの | なし（ストアからインストール） | なし（.NET と Windows App SDK を同梱） |
 | データの保存先 | `%LOCALAPPDATA%\Packages\<パッケージ名>\LocalCache\Local\AppRoulette` | `%LOCALAPPDATA%\AppRoulette` |
+| エラーのログ | `%LOCALAPPDATA%\Packages\<パッケージ名>\LocalState\logs\error.log` | `%LOCALAPPDATA%\AppRoulette\logs\error.log` |
 
 どちらもコード上は `%LOCALAPPDATA%\AppRoulette` に保存します。
 ストア版は MSIX が書き込み先をパッケージ専用のフォルダーに
 リダイレクトするため、2 つの版でデータは共有されません。
+
+エラーのログは、保存の失敗や予期しない例外を、リリース版でも記録するためのものです。
+1 MB を超えると `error.old.log` に移して、新しく書き始めます。
+エラーが起きたときにウィンドウの上部に出る帯の **ログを開く** から開けます。
+ストア版のログは、リダイレクトされない `LocalState` に置いています
+（リダイレクト先だと、アプリからメモ帳などに渡したパスで開けないため）。
 
 ## バージョンの上げ方
 

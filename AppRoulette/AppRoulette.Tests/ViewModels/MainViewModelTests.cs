@@ -91,6 +91,20 @@ public class MainViewModelTests
             "syncTimestamps.json"));
     }
 
+    /// <summary>
+    /// 条件を満たすまで、最大 5 秒待ちます。
+    /// 自動保存のように、遅れて終わる処理の結果を確かめるときに使います。
+    /// </summary>
+    /// <param name="condition">待つ条件。</param>
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+    }
+
     // ---------------------------------------------------------------
     // InitializeAsync
     // ---------------------------------------------------------------
@@ -1689,5 +1703,100 @@ public class MainViewModelTests
 
         // Assert
         Assert.Equal("同期待機", sut.SyncStatusText);
+    }
+
+    // ---------------------------------------------------------------
+    // エラーの知らせ
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public async Task ItemsText_自動保存に失敗した場合_利用者に知らせる()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        var sut = CreateSut(customRepository: fakeRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        fakeRepo.ShouldFailOnSave = true;
+
+        // Act
+        sut.ItemsText = "アイテムA";
+        await WaitUntilAsync(() => sut.SaveStatusText == "保存失敗");
+
+        // Assert
+        Assert.Equal("保存失敗", sut.SaveStatusText);
+        Assert.True(sut.IsErrorOpen);
+        Assert.Equal("保存できませんでした", sut.ErrorTitle);
+        Assert.Contains("「Roulette1」のアイテムの変更を保存できませんでした", sut.ErrorMessage);
+        Assert.Contains("テスト用の保存失敗", sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ItemsText_自動保存に成功した場合_知らせを出さない()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        sut.ItemsText = "アイテムA";
+        await WaitUntilAsync(() => sut.SaveStatusText == "保存済み");
+
+        // Assert
+        Assert.Equal("保存済み", sut.SaveStatusText);
+        Assert.False(sut.IsErrorOpen);
+    }
+
+    [Fact]
+    public async Task AddGroupCommand_保存に失敗した場合_利用者に知らせる()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var sut = CreateSut(customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        fakeGroupRepo.ShouldFailOnAdd = true;
+
+        // Act
+        await sut.AddGroupCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("保存失敗", sut.SaveStatusText);
+        Assert.True(sut.IsErrorOpen);
+        Assert.Contains("リストを追加できませんでした", sut.ErrorMessage);
+        Assert.Equal(9, sut.GroupList.Count);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_読み込みに失敗した場合_落ちずに利用者に知らせる()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository { ShouldFailOnLoad = true };
+        var sut = CreateSut(customGroupRepository: fakeGroupRepo);
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(sut.IsErrorOpen);
+        Assert.Equal("データを読み込めませんでした", sut.ErrorTitle);
+        Assert.Contains("テスト用の読み込み失敗", sut.ErrorMessage);
+        Assert.Empty(sut.GroupList);
+        Assert.Null(sut.SelectedGroup);
+    }
+
+    [Fact]
+    public void ShowError_閉じた後に別のエラーが起きた場合_新しい内容で表示し直す()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.ShowError("1 件目", "1 件目の内容");
+        sut.IsErrorOpen = false;
+
+        // Act
+        sut.ShowError("2 件目", "2 件目の内容");
+
+        // Assert
+        Assert.True(sut.IsErrorOpen);
+        Assert.Equal("2 件目", sut.ErrorTitle);
+        Assert.Equal("2 件目の内容", sut.ErrorMessage);
     }
 }
