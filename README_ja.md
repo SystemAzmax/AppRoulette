@@ -1,5 +1,7 @@
 # AppRoulette
 
+[English](README.md) | 日本語
+
 登録したアイテムの中から、ルーレットを回して 1 つを選ぶ Windows 用のデスクトップアプリです。WinUI 3 と .NET 10 で作っています。Microsoft Store 版と、インストール不要の exe 版があります。
 
 ## 機能

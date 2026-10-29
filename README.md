@@ -1,5 +1,7 @@
 # AppRoulette
 
+English | [日本語](README_ja.md)
+
 A Windows desktop app that spins a roulette wheel to pick one item from the items you register. Built with WinUI 3 and .NET 10, it is available as a Microsoft Store version and as an exe version that needs no installation.
 
 ## Features
