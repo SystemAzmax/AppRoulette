@@ -51,7 +51,9 @@ public class MainViewModelTests
         FakeGroupRepository? customGroupRepository = null,
         FakeAppSettingsRepository? customSettingsRepository = null,
         FakeDialogService? dialogService = null,
-        FakeBackupRepository? backupRepository = null)
+        FakeBackupRepository? backupRepository = null,
+        ICloudSyncService? cloudSyncService = null,
+        SyncTimestampStore? syncTimestampStore = null)
     {
         FakeItemRepository fakeRepo = customRepository ?? new FakeItemRepository();
         FakeGroupRepository fakeGroupRepo = customGroupRepository ?? new FakeGroupRepository();
@@ -71,8 +73,22 @@ public class MainViewModelTests
             fakeRepo,
             fakeGroupRepo,
             fakeSettingsRepository,
-            dialogService: dialogService,
-            backupRepository: backupRepository);
+            cloudSyncService,
+            syncTimestampStore,
+            dialogService,
+            backupRepository);
+    }
+
+    /// <summary>
+    /// 書き込まれることのない一時ファイルのパスで、同期タイムスタンプストアを生成します。
+    /// </summary>
+    private static SyncTimestampStore CreateUnusedTimestampStore()
+    {
+        return new SyncTimestampStore(Path.Combine(
+            Path.GetTempPath(),
+            "AppRouletteTests",
+            Guid.NewGuid().ToString(),
+            "syncTimestamps.json"));
     }
 
     // ---------------------------------------------------------------
@@ -1616,5 +1632,62 @@ public class MainViewModelTests
 
         // Assert
         Assert.True(sut.SelectedGroup!.ExcludeOnWin);
+    }
+
+    // ---------------------------------------------------------------
+    // OneDrive 同期の可否
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public void IsSyncAvailable_OneDriveフォルダーが見つからない場合_同期できない()
+    {
+        // Arrange
+        var sut = CreateSut(
+            cloudSyncService: new OneDriveFolderSyncService(baseDir: null),
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        var isAvailable = sut.IsSyncAvailable;
+        var canSync = sut.SyncAllCommand.CanExecute(null);
+
+        // Assert
+        Assert.False(isAvailable);
+        Assert.False(canSync);
+    }
+
+    [Fact]
+    public void IsSyncAvailable_OneDriveフォルダーが見つかった場合_同期できる()
+    {
+        // Arrange（フォルダーは作らない。可否の判定だけを確かめる）
+        var baseDir = Path.Combine(
+            Path.GetTempPath(),
+            "AppRouletteTests",
+            Guid.NewGuid().ToString());
+        var sut = CreateSut(
+            cloudSyncService: new OneDriveFolderSyncService(baseDir),
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        var isAvailable = sut.IsSyncAvailable;
+        var canSync = sut.SyncAllCommand.CanExecute(null);
+
+        // Assert
+        Assert.True(isAvailable);
+        Assert.True(canSync);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_OneDriveフォルダーが見つからない場合_同期済みと表示しない()
+    {
+        // Arrange
+        var sut = CreateSut(
+            cloudSyncService: new OneDriveFolderSyncService(baseDir: null),
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期待機", sut.SyncStatusText);
     }
 }

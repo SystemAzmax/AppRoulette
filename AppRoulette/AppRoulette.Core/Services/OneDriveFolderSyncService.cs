@@ -47,10 +47,7 @@ public class OneDriveFolderSyncService : ICloudSyncService
             : Path.Combine(baseDir, GROUPS_FOLDER);
     }
 
-    /// <summary>
-    /// OneDrive フォルダーが検出され同期が利用可能かどうかを
-    /// 取得します。
-    /// </summary>
+    /// <inheritdoc/>
     public bool IsAvailable => _groupsDir is not null;
 
     /// <inheritdoc/>

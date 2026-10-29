@@ -9,6 +9,12 @@ namespace AppRoulette.Services;
 public interface ICloudSyncService
 {
     /// <summary>
+    /// 同期先のフォルダーが検出され、同期が利用可能かどうかを
+    /// 取得します。
+    /// </summary>
+    bool IsAvailable { get; }
+
+    /// <summary>
     /// 1グループ分のデータをクラウドへアップロードします。
     /// </summary>
     /// <param name="group">アップロードするグループデータ。</param>

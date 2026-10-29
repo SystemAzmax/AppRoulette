@@ -395,7 +395,8 @@ public class MainViewModel : ObservableObject
     /// どうかを取得します。
     /// </summary>
     public bool IsSyncAvailable =>
-        _cloudSyncService is not null && _syncTimestampStore is not null;
+        _cloudSyncService is { IsAvailable: true }
+        && _syncTimestampStore is not null;
 
     /// <summary>
     /// 同期状態の表示テキストを取得します。
@@ -413,7 +414,9 @@ public class MainViewModel : ObservableObject
     /// <param name="itemRepository">SQLite Item リポジトリ。</param>
     /// <param name="groupRepository">SQLite Group リポジトリ。</param>
     /// <param name="appSettingsRepository">アプリ設定リポジトリ。</param>
-    /// <param name="cloudSyncService">クラウド同期サービス。null の場合は同期無効。</param>
+    /// <param name="cloudSyncService">
+    /// クラウド同期サービス。null の場合や、同期先のフォルダーが検出されない場合は同期無効。
+    /// </param>
     /// <param name="syncTimestampStore">同期タイムスタンプストア。null の場合は同期無効。</param>
     /// <param name="dialogService">
     /// 確認やメッセージを表示するサービス。
