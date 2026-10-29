@@ -947,6 +947,7 @@ public class MainViewModel : ObservableObject
 
     /// <summary>
     /// 選択中のグループを複製して選択します。
+    /// アイテムの有効・無効と「当たったら除外」の設定も引き継ぎます。
     /// </summary>
     private async Task DuplicateGroupAsync()
     {
@@ -961,10 +962,7 @@ public class MainViewModel : ObservableObject
             var sourceGroup = SelectedGroup;
             var displayName = $"{sourceGroup.DisplayName} Copy";
             var copiedItems = sourceGroup.Items
-                .Select(item => new RouletteItem(item.Name)
-                {
-                    Weight = item.Weight,
-                })
+                .Select(CloneItem)
                 .ToList();
             var group = await _groupRepository.AddGroupAsync(
                 displayName,
@@ -972,6 +970,10 @@ public class MainViewModel : ObservableObject
 
             group.Items = copiedItems;
             await _itemRepository.SaveItemsByGroupAsync(group.Id, copiedItems);
+
+            group.ExcludeOnWin = sourceGroup.ExcludeOnWin;
+            await _groupRepository.SaveGroupExcludeOnWinAsync(
+                group.Id, group.ExcludeOnWin);
 
             GroupList.Add(group);
             SelectedGroup = group;

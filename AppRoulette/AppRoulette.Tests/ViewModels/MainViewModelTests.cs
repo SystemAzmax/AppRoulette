@@ -383,6 +383,41 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task DuplicateGroupCommand_無効なアイテムと当たったら除外がある場合_引き継いで保存する()
+    {
+        // Arrange
+        var fakeGroupRepo = new FakeGroupRepository();
+        var fakeItemRepo = new FakeItemRepository();
+        fakeItemRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", groupId: 1),
+            new("アイテムB", groupId: 1) { IsEnabled = false },
+            new("アイテムC", groupId: 1),
+        });
+        var sut = CreateSut(
+            customRepository: fakeItemRepo,
+            customGroupRepository: fakeGroupRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+        sut.IsExcludeOnWinEnabled = true;
+
+        // Act
+        await sut.DuplicateGroupCommand.ExecuteAsync(null);
+
+        var restartedSut = CreateSut(
+            customRepository: fakeItemRepo,
+            customGroupRepository: fakeGroupRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("Roulette1 Copy", sut.SelectedGroup!.DisplayName);
+        Assert.True(sut.IsExcludeOnWinEnabled);
+        Assert.Equal(new[] { true, false, true }, sut.SelectedGroup.Items.Select(item => item.IsEnabled));
+        var restartedCopy = restartedSut.GroupList[9];
+        Assert.True(restartedCopy.ExcludeOnWin);
+        Assert.Equal(new[] { true, false, true }, restartedCopy.Items.Select(item => item.IsEnabled));
+    }
+
+    [Fact]
     public async Task DeleteGroupCommand_実行した場合_グループとアイテムを削除する()
     {
         // Arrange
