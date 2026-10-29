@@ -11,7 +11,7 @@ AppRoulette は、次のソフトウェアを使用しています。
   5. .NET 10（.NET ランタイム、System.Numerics.Tensors）- MIT License
   6. Microsoft Edge WebView2 SDK 1.0.3719.77 - BSD 3-Clause 形式のライセンス
   7. Win2D (Microsoft.Graphics.Win2D 1.4.0) - Microsoft ソフトウェア ライセンス条項
-  8. Windows App SDK 2.2.0（WinUI、Windows ML などを含む）- Microsoft ソフトウェア ライセンス条項
+  8. Windows App SDK 2.6.4（WinUI、Windows ML などを含む）- Microsoft ソフトウェア ライセンス条項
   9. Windows SDK の .NET 向けプロジェクション (Microsoft.Windows.SDK.NET.Ref 10.0.22000.57)
      - Microsoft ソフトウェア ライセンス条項
 
@@ -366,7 +366,7 @@ http://www.microsoft.com/web/webpi/eula/eula_win2d_10012014.htm
 
 
 ================================================================================
-8. Windows App SDK 2.2.0 - Microsoft Software License Terms
+8. Windows App SDK 2.6.4 - Microsoft Software License Terms
 ================================================================================
 
 Copyright (c) Microsoft Corporation. All rights reserved.

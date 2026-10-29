@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | 形式 | MSIX パッケージ | パッケージなし（unpackaged） |
 | ビルドに使うプロジェクト | `AppRoulette (Package)` | `AppRoulette` |
-| 出力 | `.msixupload` | exe を含むフォルダー（約 270 MB） |
+| 出力 | `.msixupload` | exe を含むフォルダー（約 290 MB） |
 | 配布先の PC に必要なもの | なし（ストアからインストール） | なし（.NET と Windows App SDK を同梱） |
 | データの保存先 | `%LOCALAPPDATA%\Packages\<パッケージ名>\LocalCache\Local\AppRoulette` | `%LOCALAPPDATA%\AppRoulette` |
 
@@ -41,7 +41,13 @@ NuGet パッケージを追加・更新したときや、.NET のランタイム
   .NET の節は `microsoft.netcore.app.runtime.win-x64` の `LICENSE.TXT` と `THIRD-PARTY-NOTICES.TXT` です。
 - パッケージにライセンスファイルが無い Microsoft.Data.Sqlite と SQLitePCLRaw は、
   それぞれのリポジトリ（dotnet/efcore、ericsink/SQLitePCL.raw）の LICENSE から取っています。
+- Windows ML の `ThirdPartyNotices.txt` は、`microsoft.windows.ai.machinelearning` パッケージにあります。
 - 冒頭の一覧に書いたバージョンも、合わせて書き換えます。
+
+Windows App SDK を更新するときは、本体だけでなく部品のパッケージ（`microsoft.windowsappsdk.winui` など）の
+`license.txt` も開き、題名が「ENGINEERING PREVIEW」になっていないか確かめてください。
+2.0.1〜2.3.1 は本体が安定版でも、WinUI の部品にプレビュー版のライセンス（本番環境での使用と再配布を禁じるもの）が
+付いていました。2.4.0 以降は通常のライセンスです。
 
 ## ストア版のビルド
 
