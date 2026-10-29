@@ -96,45 +96,6 @@ public class OneDriveFolderSyncService : ICloudSyncService
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<SyncGroupData>> DownloadAllGroupsAsync()
-    {
-        var results = new List<SyncGroupData>();
-        if (_groupsDir is null || !Directory.Exists(_groupsDir))
-        {
-            return results;
-        }
-
-        try
-        {
-            foreach (var filePath in
-                Directory.EnumerateFiles(_groupsDir, "*.json"))
-            {
-                try
-                {
-                    var json = await File.ReadAllTextAsync(filePath)
-                        .ConfigureAwait(false);
-                    var data = JsonSerializer
-                        .Deserialize<SyncGroupData>(json, JSON_OPTIONS);
-                    if (data is not null)
-                    {
-                        results.Add(data);
-                    }
-                }
-                catch (Exception ex) when (IsSyncException(ex))
-                {
-                    ApplicationLogger.LogError("グループ読み込み", ex);
-                }
-            }
-        }
-        catch (Exception ex) when (IsSyncException(ex))
-        {
-            ApplicationLogger.LogError("グループ一覧取得", ex);
-        }
-
-        return results;
-    }
-
-    /// <inheritdoc/>
     public async Task<bool> UploadAllGroupsAsync(
         IReadOnlyList<SyncGroupData> groups)
     {

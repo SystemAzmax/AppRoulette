@@ -627,6 +627,8 @@ public class MainViewModel : ObservableObject
     /// <summary>
     /// 全グループをクラウドと双方向に同期します。
     /// 各グループについてタイムスタンプの新しい方を採用します。
+    /// 同期ファイルを読めないグループは、クラウドのデータを手元のデータで
+    /// 上書きしないよう、適用もアップロードもせずに飛ばして「同期失敗」と表示します。
     /// </summary>
     private async Task SyncAllAsync()
     {
@@ -639,17 +641,29 @@ public class MainViewModel : ObservableObject
 
         try
         {
-            var remoteGroups = await _cloudSyncService.DownloadAllGroupsAsync();
-            var remoteById = remoteGroups.ToDictionary(g => g.GroupId);
             var uploadTargets = new List<SyncGroupData>();
+            var allDownloaded = true;
 
             foreach (var group in GroupList)
             {
+                SyncGroupData? remote;
+                try
+                {
+                    remote = await _cloudSyncService.DownloadGroupAsync(group.Id);
+                }
+                catch (Exception ex)
+                {
+                    // 一時的に読めないだけの場合もあるため、ほかの PC で更新された
+                    // 新しいデータを上書きしないよう、このグループは飛ばす
+                    ApplicationLogger.LogError("手動同期のクラウドデータ取得", ex);
+                    allDownloaded = false;
+                    continue;
+                }
+
                 var localTimestamp =
                     await _syncTimestampStore.GetAsync(group.Id)
                     ?? DateTime.MinValue;
                 var local = SyncGroupData.FromGroup(group, localTimestamp);
-                remoteById.TryGetValue(group.Id, out var remote);
 
                 if (SyncConflictResolver.ShouldApplyRemote(local, remote))
                 {
@@ -661,9 +675,9 @@ public class MainViewModel : ObservableObject
                 }
             }
 
-            var succeeded =
+            var uploaded =
                 await _cloudSyncService.UploadAllGroupsAsync(uploadTargets);
-            SyncStatusText = succeeded
+            SyncStatusText = allDownloaded && uploaded
                 ? SYNC_STATUS_SYNCED
                 : SYNC_STATUS_FAILED;
         }

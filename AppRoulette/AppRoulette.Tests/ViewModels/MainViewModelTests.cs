@@ -1768,7 +1768,7 @@ public class MainViewModelTests
     {
         // Arrange
         var sut = CreateSut(
-            cloudSyncService: new FakeCloudSyncService { ShouldFailOnDownload = true },
+            cloudSyncService: new FakeCloudSyncService { UnreadableGroupIds = { 1 } },
             syncTimestampStore: CreateUnusedTimestampStore());
 
         // Act
@@ -1797,6 +1797,46 @@ public class MainViewModelTests
 
         // Assert
         Assert.Equal("同期失敗", sut.SyncStatusText);
+    }
+
+    [Fact]
+    public async Task SyncAllCommand_読めない同期ファイルがある場合_そのリストは上書きせず同期失敗と表示する()
+    {
+        // Arrange（クラウドにリスト 1 のデータがあるが、同期ファイルを読めない）
+        var remoteGroup = new RouletteGroup(1, "クラウドの名前");
+        remoteGroup.TryAddItem(new RouletteItem("クラウドのアイテム"));
+        var cloudSyncService = new FakeCloudSyncService { UnreadableGroupIds = { 1 } };
+        cloudSyncService.SetRemoteGroup(SyncGroupData.FromGroup(remoteGroup, DateTime.UtcNow));
+        var sut = CreateSut(
+            cloudSyncService: cloudSyncService,
+            syncTimestampStore: CreateUnusedTimestampStore());
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.SyncAllCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期失敗", sut.SyncStatusText);
+        Assert.Equal("クラウドの名前", cloudSyncService.GetRemoteGroup(1)?.DisplayName);
+        Assert.Equal("Roulette2", cloudSyncService.GetRemoteGroup(2)?.DisplayName);
+    }
+
+    [Fact]
+    public async Task SyncAllCommand_すべて読めた場合_同期済みと表示する()
+    {
+        // Arrange
+        var cloudSyncService = new FakeCloudSyncService();
+        var sut = CreateSut(
+            cloudSyncService: cloudSyncService,
+            syncTimestampStore: CreateUnusedTimestampStore());
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.SyncAllCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期済み", sut.SyncStatusText);
+        Assert.Equal("Roulette1", cloudSyncService.GetRemoteGroup(1)?.DisplayName);
     }
 
     // ---------------------------------------------------------------

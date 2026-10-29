@@ -32,12 +32,6 @@ public interface ICloudSyncService
     Task<SyncGroupData?> DownloadGroupAsync(int groupId);
 
     /// <summary>
-    /// クラウド上の全グループデータをダウンロードします。
-    /// </summary>
-    /// <returns>グループデータの一覧。存在しない場合は空。</returns>
-    Task<IReadOnlyList<SyncGroupData>> DownloadAllGroupsAsync();
-
-    /// <summary>
     /// 全グループのデータをクラウドへ一括アップロードします。
     /// </summary>
     /// <param name="groups">アップロードするグループデータ一覧。</param>

@@ -116,25 +116,6 @@ public class OneDriveFolderSyncServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DownloadAllGroupsAsync_全グループを取得できる()
-    {
-        await _sut.UploadGroupAsync(CreateData(1));
-        await _sut.UploadGroupAsync(CreateData(2));
-
-        var all = await _sut.DownloadAllGroupsAsync();
-
-        Assert.Equal(2, all.Count);
-    }
-
-    [Fact]
-    public async Task DownloadAllGroupsAsync_フォルダーがない場合_空リストを返す()
-    {
-        var all = await _sut.DownloadAllGroupsAsync();
-
-        Assert.Empty(all);
-    }
-
-    [Fact]
     public async Task UploadAllGroupsAsync_全件保存に成功する()
     {
         var groups = new List<SyncGroupData>
@@ -146,6 +127,7 @@ public class OneDriveFolderSyncServiceTests : IDisposable
         var result = await _sut.UploadAllGroupsAsync(groups);
 
         Assert.True(result);
-        Assert.Equal(2, (await _sut.DownloadAllGroupsAsync()).Count);
+        Assert.NotNull(await _sut.DownloadGroupAsync(1));
+        Assert.NotNull(await _sut.DownloadGroupAsync(2));
     }
 }

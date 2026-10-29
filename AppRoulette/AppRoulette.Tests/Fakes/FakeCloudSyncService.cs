@@ -12,9 +12,9 @@ internal class FakeCloudSyncService : ICloudSyncService
     private readonly Dictionary<int, SyncGroupData> _groups = new();
 
     /// <summary>
-    /// ダウンロードで例外を投げるかどうかを取得または設定します。
+    /// ダウンロードで例外を投げる（同期ファイルを読めない）グループの ID を取得します。
     /// </summary>
-    public bool ShouldFailOnDownload { get; set; }
+    public HashSet<int> UnreadableGroupIds { get; } = new();
 
     /// <inheritdoc/>
     public bool IsAvailable => true;
@@ -28,6 +28,17 @@ internal class FakeCloudSyncService : ICloudSyncService
         _groups[group.GroupId] = group;
     }
 
+    /// <summary>
+    /// クラウドにあるグループのデータを取得します。
+    /// </summary>
+    /// <param name="groupId">グループID。</param>
+    /// <returns>グループのデータ。無い場合は null。</returns>
+    public SyncGroupData? GetRemoteGroup(int groupId)
+    {
+        _groups.TryGetValue(groupId, out var group);
+        return group;
+    }
+
     /// <inheritdoc/>
     public Task<bool> UploadGroupAsync(SyncGroupData group)
     {
@@ -38,24 +49,12 @@ internal class FakeCloudSyncService : ICloudSyncService
     /// <inheritdoc/>
     public Task<SyncGroupData?> DownloadGroupAsync(int groupId)
     {
-        if (ShouldFailOnDownload)
+        if (UnreadableGroupIds.Contains(groupId))
         {
             throw new IOException("テスト用の読み込み失敗");
         }
 
-        _groups.TryGetValue(groupId, out var group);
-        return Task.FromResult(group);
-    }
-
-    /// <inheritdoc/>
-    public Task<IReadOnlyList<SyncGroupData>> DownloadAllGroupsAsync()
-    {
-        if (ShouldFailOnDownload)
-        {
-            throw new IOException("テスト用の読み込み失敗");
-        }
-
-        return Task.FromResult((IReadOnlyList<SyncGroupData>)_groups.Values.ToList());
+        return Task.FromResult(GetRemoteGroup(groupId));
     }
 
     /// <inheritdoc/>
