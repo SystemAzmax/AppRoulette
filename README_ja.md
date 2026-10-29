@@ -1,125 +1,130 @@
 # AppRoulette
 
-Windows デスクトップ用のルーレット選択アプリケーション。WinUI 3 と .NET 10 で構築されており、ルーレットグループの作成・編集やアイテムの追加、ルーレットの実行などの機能を提供します。
+登録したアイテムの中から、ルーレットを回して 1 つを選ぶ Windows 用のデスクトップアプリです。WinUI 3 と .NET 10 で作っています。Microsoft Store 版と、インストール不要の exe 版があります。
 
 ## 機能
 
-- **複数グループ管理**: 最大 3 つのルーレットグループを独立して管理
-- **アイテム管理**: グループあたり最大 30 個のアイテムを直感的に追加・編集
-- **アニメーションルーレット**: スムーズな回転アニメーションと現実的な減速効果
-- **永続化ストレージ**: グループとアイテムを JSON 形式で自動保存
-- **MVVM アーキテクチャ**: ViewModel ベースの関心の分離
-- **ウィンドウ状態管理**: ウィンドウサイズと位置をセッション間で保存
+- **複数のリスト**: 最初は 9 個のリスト（Roulette1〜Roulette9）があり、追加・削除・複製・並べ替え・名前の変更ができます
+- **アイテムの編集**: 1 つのリストに最大 30 個のアイテムを登録できます。表の形で編集する「詳細」タブと、1 行に 1 つずつ入力・貼り付けできる「テキスト」タブがあります
+- **重み付け（Weight）**: アイテムごとに 1〜5 の Weight を指定でき、値が大きいほど当たりやすくなります
+- **抽選からの除外**: チェックを外したアイテムは抽選から外れます。「当たったら除外」をオンにすると、当たったアイテムを自動で外します
+- **回転アニメーション**: 減速しながら止まるルーレットを、Win2D で描画します
+- **自動保存**: 変更は自動で SQLite のデータベースに保存されます
+- **CSV のインポート・エクスポート**: 選択中のリストのアイテムを、CSV ファイルで読み書きできます
+- **バックアップと復元**: すべてのリストとアイテムを 1 つのファイルに保存し、そこから復元できます
+- **OneDrive 同期**: OneDrive を使っている PC では、OneDrive フォルダーを通じて、ほかの PC とリストを同期できます
+- **ウィンドウ**: 前回のサイズと位置で開きます。常に最前面に表示することもできます
+- **エラーの通知**: 保存の失敗や予期しないエラーをウィンドウの上部に表示し、ログファイルに記録します
 
 ## 技術スタック
 
 - **フレームワーク**: .NET 10
 - **UI フレームワーク**: WinUI 3 (Windows App SDK)
+- **描画**: Win2D
+- **データ保存**: SQLite (Microsoft.Data.Sqlite)
 - **アーキテクチャ**: MVVM (Model-View-ViewModel)
-- **データ永続化**: JSON ベースのファイルストレージ
-- **Community Toolkit**: MVVM Toolkit によるプロパティバインディング
+- **Community Toolkit**: MVVM Toolkit によるプロパティバインディングとコマンド
+- **テスト**: xUnit
+- **配布**: MSIX パッケージ（Microsoft Store）と、.NET と Windows App SDK を同梱した exe
 
 ## プロジェクト構造
 
 ```
+AppRoulette.slnx                  # ソリューション
 AppRoulette/
-├── Models/
-│   ├── RouletteItem.cs       # ルーレットの1アイテムを表現
-│   └── RouletteGroup.cs      # ルーレットグループ (最大30アイテム)
-├── ViewModels/
-│   └── MainViewModel.cs      # メインアプリケーションロジック
-├── Services/
-│   ├── IDataPersistenceService.cs        # データ永続化インターフェース
-│   ├── JsonDataPersistenceService.cs    # JSON ストレージ実装
-│   ├── IRandomService.cs                # ランダム生成インターフェース
-│   ├── RandomService.cs                 # ランダム生成実装
-│   ├── IWindowPositionService.cs        # ウィンドウ状態管理インターフェース
-│   └── WindowPositionService.cs         # ウィンドウ状態管理実装
-├── Views/
-│   └── RouletteRenderer.cs   # ルーレット描画ロジック
-├── MainWindow.xaml          # メイン UI
-├── MainWindow.xaml.cs       # メインウィンドウコードビハインド
-└── App.xaml                 # アプリケーションリソース定義
+├── AppRoulette/                  # アプリ本体（WinUI 3）
+│   ├── App.xaml(.cs)             # 起動処理、予期しない例外の処理
+│   ├── MainWindow.xaml(.cs)      # メイン画面
+│   ├── Services/                 # ダイアログ、ウィンドウの位置とサイズ、アプリの情報
+│   ├── Views/                    # ルーレットの描画（Win2D）
+│   └── ThirdPartyNotices.txt     # 使用しているソフトウェアのライセンス表示
+├── AppRoulette.Core/             # WinUI に依存しない処理
+│   ├── Models/                   # リスト、アイテム、同期・バックアップ用のデータ
+│   ├── Services/                 # SQLite への保存、OneDrive 同期、バックアップ、CSV、ログ
+│   └── ViewModels/               # 画面の状態と処理、回転アニメーションの計算
+├── AppRoulette.Tests/            # ユニットテスト
+└── AppRoulette (Package)/        # ストア版の MSIX パッケージ（マニフェストとパッケージ画像）
+docs/                             # 開発者向けの文書（ビルド方法、OneDrive 同期の仕組み）
+tools/                            # アイコン、パッケージ画像、ライセンス表示を作るスクリプト
 ```
 
 ## 主要コンポーネント
 
-### Models
-- **RouletteItem**: ルーレットグループ内のアイテムを表現（表示名を保持）
-- **RouletteGroup**: 最大 30 個の RouletteItem を含有するグループ（最大 3 グループ、各グループに ID と表示名を持つ）
+### Models（AppRoulette.Core）
+- **RouletteGroup**: リスト。表示名、最大 30 個のアイテム、「当たったら除外」の設定を持ちます
+- **RouletteItem**: アイテム。名前、Weight、有効・無効を持ちます
 
-### ViewModels
-- **MainViewModel**: グループ/アイテム管理、ルーレット選択ロジック、状態永続化を処理
+### ViewModels（AppRoulette.Core）
+- **MainViewModel**: リストとアイテムの管理、抽選、保存、同期、エラーの通知を担います
+- **SpinAnimationViewModel**: 回転アニメーションの状態と、止まる位置の計算を担います
 
-### Services
-- **JsonDataPersistenceService**: グループとアイテムを JSON 形式でロード/セーブ
-- **RandomService**: 公正な選択のためのランダム数生成
-- **WindowPositionService**: アプリケーションウィンドウサイズと位置を管理
+### Services（AppRoulette.Core）
+- **SqliteGroupRepository / SqliteItemRepository / SqliteAppSettingsRepository**: SQLite への読み書き
+- **DatabaseInitializer**: データベースとテーブルの作成
+- **OneDriveFolderSyncService / SyncTimestampStore / SyncConflictResolver**: OneDrive フォルダーを使った同期
+- **BackupSerializer / SqliteBackupRepository**: バックアップの作成と復元
+- **CsvFileEncoding**: CSV ファイルの文字コードの判別と変換
+- **ApplicationLogger / ErrorLogFile**: エラーのログ
+- **RandomService**: 抽選に使う乱数
 
-### Views
-- **RouletteRenderer**: グラフィックス API を使用したアニメーション ルーレット描画
+### Views（AppRoulette）
+- **MainWindow**: メイン画面
+- **RouletteRenderer**: Win2D を使ったルーレットの描画
+- **ContentDialogService**: 確認やメッセージのダイアログ
+- **WindowPositionService / WindowSizeCalculator**: ウィンドウの位置とサイズの保存と計算
 
 ## 使用開始
 
 ### 前提条件
-- Windows 10/11 以降
+- Windows 10 バージョン 1809 以降、または Windows 11
 - .NET 10 SDK
 - Visual Studio 2026 以降（Community Edition 対応）
 
-### ビルド
+### ビルドと実行
 
 1. リポジトリをクローン:
    ```bash
    git clone https://github.com/SystemAzmax/AppRoulette.git
    ```
 
-2. Visual Studio でソリューションファイルを開く:
-   ```bash
-   AppRoulette.slnx
-   ```
+2. Visual Studio で `AppRoulette.slnx` を開きます
 
-3. ソリューションをビルド:
-   ```bash
-   dotnet build
-   ```
+3. **AppRoulette (Package)** をスタートアップ プロジェクトに設定し、F5 で実行します
 
-4. アプリケーションを実行:
-   ```bash
-   dotnet run
-   ```
+- `AppRoulette` プロジェクトのビルド出力（`bin\...\AppRoulette.exe`）はパッケージ用のため、直接起動すると落ちます。
+- exe 版の発行と、ストアに提出するパッケージの作り方は、[ビルド方法](docs/BuildGuide.md)を参照してください。
 
 ## 使用方法
 
-1. **グループの作成**: アプリケーションは 3 つの事前定義されたルーレットグループで起動
-2. **アイテムの追加**: グループを選択して入力フィールドを使用してアイテムを追加
-3. **アイテムの削除**: アイテムを選択して削除ボタンで削除
-4. **ルーレットの実行**: スピンボタンをクリックしてアクティブなグループからアイテムをランダムに選択
-5. **データ永続化**: すべての変更は自動的にローカルストレージに保存
+1. **リストを選ぶ**: 右上のコンボボックスで、使うリストを選びます
+2. **アイテムを登録する**: 「詳細」タブの **アイテム追加** で追加し、名前と Weight を入力します。「テキスト」タブでは、1 行に 1 つずつ「名前,Weight」の形で入力・貼り付けできます（Weight を省略すると 1）
+3. **ルーレットを回す**: **スタート** ボタン、ルーレットのクリック、または Space / Enter キー（テキストの入力中を除く）で回します
+4. **当たったアイテムを外す**: 次の抽選から外したいときは、**当たったら除外** をオンにします
+5. **保存**: 変更は自動で保存されます
 
 ## アーキテクチャの詳細
 
 ### MVVM パターン
-アプリケーションは MVVM パターンに従い、以下の役割分担を実施:
-- **Model**: `RouletteItem` および `RouletteGroup` クラスがデータを管理
-- **View**: `MainWindow.xaml` で定義された XAML UI
-- **ViewModel**: `MainViewModel` がすべてのビジネスロジックとステート管理を処理
+- **Model**: `RouletteGroup` と `RouletteItem` がデータを表します
+- **View**: `MainWindow.xaml` で画面を定義し、`x:Bind` で ViewModel と結び付けます
+- **ViewModel**: `MainViewModel` が画面の状態と処理を持ちます
 
-### 双方向データバインディング
-- View は ViewModels とのデータバインディングで通信
-- ViewModel のデータ変更時に View が自動更新
-- View のユーザー入力が ViewModel メソッドをトリガー
+### プロジェクトの分け方
+- WinUI に依存しない処理（ViewModel、保存、同期など）は `AppRoulette.Core` に置き、`AppRoulette.Tests` からテストします
+- 画面や Windows の機能に依存する処理（ダイアログ、ウィンドウ、描画）は `AppRoulette` に置きます
 
-### サービス注入
-- 依存性注入によるサービス管理
-- インターフェースによる拡張性と テスト容易性
-- 横断的関心事（永続化、ランダム化など）の処理
+### サービスの受け渡し
+- `MainWindow` で各サービスを作り、`MainViewModel` のコンストラクターに渡します（DI コンテナーは使っていません）
+- サービスはインターフェースで受け取るので、テストでは偽の実装（`AppRoulette.Tests/Fakes`）に差し替えます
 
 ## コーディング規約
 
-- **コメント**: すべてのパブリックメソッドには XML ドキュメントコメントを付けること
-- **命名**: クラス/メソッド は PascalCase、変数は camelCase
+詳しくは [.github/copilot-instructions.md](.github/copilot-instructions.md) を参照してください。
+
+- **コメント**: メソッドには XML ドキュメントコメントを付けること
+- **命名**: クラス/メソッドは PascalCase、変数は camelCase
 - **定数**: 定数値は UPPER_SNAKE_CASE
-- **プライベートフィールド**: アンダースコア接頭辞を使用 (_fieldName)
+- **プライベートフィールド**: アンダースコア接頭辞を使用（`_fieldName`）
 - **フォーマット**: 80 文字行制限、スペースベースインデント
 
 ## テスト
@@ -127,39 +132,52 @@ AppRoulette/
 プロジェクトには `AppRoulette.Tests` プロジェクト内にユニットテストが含まれます。以下でテストを実行:
 
 ```bash
-dotnet test
+dotnet test AppRoulette/AppRoulette.Tests/AppRoulette.Tests.csproj -c Release -p:Platform=x64
 ```
 
-## ファイル形式
+GitHub Actions（`.github/workflows/build.yml`）でも、`main` と `product*` ブランチへのプッシュなどのときに、テストと exe 版の発行を行います。
 
-### データストレージ
-- 形式: JSON
-- 保存場所: ローカルアプリケーションディレクトリ
-- 内容: シリアル化された `RouletteGroup` オブジェクトとそのアイテム
+## データとファイル
+
+### 保存場所
+
+| | ストア版 | exe 版 |
+| --- | --- | --- |
+| データ（SQLite） | `%LOCALAPPDATA%\Packages\<パッケージ名>\LocalCache\Local\AppRoulette\roulette.db` | `%LOCALAPPDATA%\AppRoulette\roulette.db` |
+| エラーのログ | `%LOCALAPPDATA%\Packages\<パッケージ名>\LocalState\logs\error.log` | `%LOCALAPPDATA%\AppRoulette\logs\error.log` |
+| OneDrive 同期 | `%OneDrive%\Apps\AppRoulette\groups\<リストの ID>.json` | 同左 |
+
+### ファイル形式
+- **CSV**: 1 行目は見出し（`アイテム名,Weight`）、2 行目から 1 行に 1 アイテム。書き出しは BOM 付き UTF-8、読み込みは UTF-8・UTF-16・Shift_JIS に対応
+- **バックアップ**: すべてのリストとアイテムを含む JSON ファイル
+- **OneDrive 同期**: リストごとの JSON ファイル（仕組みは [OneDrive フォルダー同期の仕組み](docs/OneDriveSyncSetup.md) を参照）
 
 ### アイコン
 - exe とウィンドウのアイコン: `AppRoulette/AppRoulette/Copilot_20260614_202528.ico`（16〜256px の各サイズを含む ICO）
 - ストア版のパッケージ画像: `AppRoulette/AppRoulette (Package)/Images/`
+- 元画像: `docs/Copilot_20260614_202528.png`（作り直し方は[ビルド方法](docs/BuildGuide.md)を参照）
 
 ## パフォーマンスの考慮事項
 
-- **ルーレット アニメーション**: 60fps レンダリングで最適化
-- **データ永続化**: キャッシング機能により効率化
-- **メモリ管理**: 最大アイテム/グループ数制限による効率的なリスト使用
+- **ルーレット アニメーション**: 約 60fps（16 ミリ秒ごと）で描画
+- **自動保存**: 短い間に続いた変更は、まとめて 1 回で保存
+- **配布物の大きさ**: Windows App SDK は使う部品だけを参照し、使わない機能の DLL を含めない
 
 ## セキュリティの考慮事項
 
-- **ファイルアクセス**: 標準 Windows ファイル API と適切な権限管理
-- **ユーザー入力**: ストレージ前のアイテムテキスト検証
-- **最小依存関係**: 攻撃対象領域を縮小
+- **通信**: ネットワーク通信は行いません。OneDrive 同期も PC の OneDrive フォルダーへの読み書きだけで、クラウドとの同期は OneDrive のクライアントが行います
+- **データの保存先**: データはユーザーごとのフォルダー（`%LOCALAPPDATA%`）に保存します
+- **データベース**: 入力された値は、パラメーター付きのクエリーで SQLite に渡します
 
 ## 貢献
 
-貢献を歓迎します。プロジェクトの `copilot-instructions.md` で指定されているコーディング規約に従ってください。
+貢献を歓迎します。[.github/copilot-instructions.md](.github/copilot-instructions.md) で指定されているコーディング規約に従ってください。
 
 ## ライセンス
 
 [ライセンス情報をここに記載してください]
+
+使用しているソフトウェアのライセンスは、`AppRoulette/AppRoulette/ThirdPartyNotices.txt`（アプリの「ライセンス情報」ボタンでも開けます）を参照してください。
 
 ## サポート
 
@@ -168,8 +186,8 @@ dotnet test
 ## ロードマップ
 
 - [ ] 多言語対応 (i18n)
-- [ ] ルーレットグループのカスタムカラーテーマ
-- [ ] インポート/エクスポート機能
+- [ ] リストごとのカスタムカラーテーマ
+- [x] インポート/エクスポート機能（CSV、バックアップ）
 - [ ] アニメーション カスタマイズオプション
 - [ ] スピン中の音声効果
 

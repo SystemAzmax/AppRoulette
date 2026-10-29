@@ -43,14 +43,56 @@
 アプリと一緒に配布するソフトウェアのライセンスを、原文のまま並べたものです。
 NuGet パッケージを追加・更新したときや、.NET のランタイムを更新したときは、このファイルも更新してください。
 
+ファイルは `tools\notices\build-notices.sh` で作ります。
+
+1. スクリプトに書いてあるパッケージのバージョン（フォルダー名と、冒頭の一覧・各節の見出し）を、
+   使っているバージョンに書き換えます。パッケージを追加したときは、節も追加します。
+2. 一度ビルドして、NuGet のキャッシュにパッケージを取得しておきます。
+3. Git Bash で、リポジトリのフォルダーから次を実行します。
+   `AppRoulette\AppRoulette\ThirdPartyNotices.txt` が上書きされます。
+
+   ```bash
+   bash tools/notices/build-notices.sh
+   ```
+
+各節の取り出し元は次のとおりです。
+
 - 各節の内容は、`%USERPROFILE%\.nuget\packages\<パッケージ名>\<バージョン>\` にある
   `LICENSE.txt`、`License.md`、`NOTICE.txt`、`ThirdPartyNotices.txt` などから取っています。
   .NET の節は `microsoft.netcore.app.runtime.win-x64` の `LICENSE.TXT` と `THIRD-PARTY-NOTICES.TXT` です。
 - パッケージにライセンスファイルが無い Microsoft.Data.Sqlite と SQLitePCLRaw は、
-  それぞれのリポジトリ（dotnet/efcore、ericsink/SQLitePCL.raw）の LICENSE から取っています。
+  それぞれのリポジトリ（dotnet/efcore、ericsink/SQLitePCL.raw）の LICENSE を
+  `tools\notices\licenses` に置いて、そこから取っています。
 - Windows App SDK の付録は、`microsoft.windowsappsdk.base` の `NOTICE.txt` から取っています。
   SDK 全体の表示で、WinUI の部品の `NOTICE.txt` の内容も含んでいます。
-- 冒頭の一覧に書いたバージョンも、合わせて書き換えます。
+
+## アイコンとパッケージ画像の作り直し
+
+exe とウィンドウのアイコン（`AppRoulette\AppRoulette\Copilot_20260614_202528.ico`）と、
+ストア版のパッケージ画像（`AppRoulette\AppRoulette (Package)\Images`）は、
+元画像 `docs\Copilot_20260614_202528.png`（背景あり、1024px）から、`tools\icon` のスクリプトで作っています。
+どちらも System.Drawing を使うため、Windows PowerShell 5.1（`powershell`）で実行します。
+
+1. 元画像から、透明背景の円形の画像（1024px）と ico を作ります。
+   出力先には、作業用のフォルダーを指定します。
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File tools\icon\build-icon.ps1 -OutDir $env:TEMP\AppRouletteIcon
+   ```
+
+   - `icon-master-1024.png`: 透明背景の円形の画像（次の手順で使います）
+   - `AppRoulette.ico`: 16〜256px の 10 サイズを含む ico
+   - `preview-small.png`、`preview-large.png`: 確認用のプレビュー
+2. `AppRoulette.ico` を、`AppRoulette\AppRoulette\Copilot_20260614_202528.ico` に上書きコピーします。
+3. パッケージ画像を作ります。`AppRoulette\AppRoulette (Package)\Images` の 67 枚が上書きされます。
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File tools\icon\build-package-images.ps1 -MasterPath $env:TEMP\AppRouletteIcon\icon-master-1024.png -PreviewPath $env:TEMP\AppRouletteIcon\preview-package.png
+   ```
+
+- 元画像の円はわずかに横長の楕円なので、`build-icon.ps1` の引数（`-Cx`、`-Cy`、`-Rx`、`-Ry`）で
+  中心と横・縦の半径を指定しています。元画像を差し替えるときは、これも合わせて変えます。
+- 画像の種類や大きさを変えたときは、`Package.appxmanifest` の指定も合わせて確認してください。
 
 ## Windows App SDK の参照と更新
 
