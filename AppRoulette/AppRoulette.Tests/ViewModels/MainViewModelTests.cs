@@ -1713,6 +1713,57 @@ public class MainViewModelTests
         Assert.Equal("同期待機", sut.SyncStatusText);
     }
 
+    [Fact]
+    public async Task InitializeAsync_OneDriveにデータが無い場合_同期済みと表示する()
+    {
+        // Arrange
+        var sut = CreateSut(
+            cloudSyncService: new FakeCloudSyncService(),
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期済み", sut.SyncStatusText);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_OneDriveのデータを読み込めない場合_同期失敗と表示する()
+    {
+        // Arrange
+        var sut = CreateSut(
+            cloudSyncService: new FakeCloudSyncService { ShouldFailOnDownload = true },
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期失敗", sut.SyncStatusText);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_OneDriveの新しいデータを適用できない場合_同期失敗と表示する()
+    {
+        // Arrange（クラウドに新しいデータがあり、手元への保存に失敗する）
+        var remoteGroup = new RouletteGroup(1, "クラウドの名前");
+        remoteGroup.TryAddItem(new RouletteItem("クラウドのアイテム"));
+        var cloudSyncService = new FakeCloudSyncService();
+        cloudSyncService.SetRemoteGroup(SyncGroupData.FromGroup(remoteGroup, DateTime.UtcNow));
+        var fakeRepo = new FakeItemRepository { ShouldFailOnSave = true };
+        var sut = CreateSut(
+            customRepository: fakeRepo,
+            cloudSyncService: cloudSyncService,
+            syncTimestampStore: CreateUnusedTimestampStore());
+
+        // Act
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("同期失敗", sut.SyncStatusText);
+    }
+
     // ---------------------------------------------------------------
     // エラーの知らせ
     // ---------------------------------------------------------------

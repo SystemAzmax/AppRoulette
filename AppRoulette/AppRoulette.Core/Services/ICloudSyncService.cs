@@ -26,6 +26,9 @@ public interface ICloudSyncService
     /// </summary>
     /// <param name="groupId">グループID。</param>
     /// <returns>グループデータ。存在しない場合は null。</returns>
+    /// <remarks>
+    /// 読み込めない場合は、存在しない場合と区別できるよう、null ではなく例外を投げます。
+    /// </remarks>
     Task<SyncGroupData?> DownloadGroupAsync(int groupId);
 
     /// <summary>

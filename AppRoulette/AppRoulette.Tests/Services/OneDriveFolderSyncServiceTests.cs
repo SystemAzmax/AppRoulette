@@ -105,6 +105,17 @@ public class OneDriveFolderSyncServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task DownloadGroupAsync_ファイルが壊れている場合_nullではなく例外を投げる()
+    {
+        var groupsDir = Path.Combine(_testDir, "groups");
+        Directory.CreateDirectory(groupsDir);
+        await File.WriteAllTextAsync(Path.Combine(groupsDir, "1.json"), "{ 壊れたデータ");
+
+        await Assert.ThrowsAnyAsync<System.Text.Json.JsonException>(
+            () => _sut.DownloadGroupAsync(1));
+    }
+
+    [Fact]
     public async Task DownloadAllGroupsAsync_全グループを取得できる()
     {
         await _sut.UploadGroupAsync(CreateData(1));

@@ -88,18 +88,11 @@ public class OneDriveFolderSyncService : ICloudSyncService
             return null;
         }
 
-        try
-        {
-            var json = await File.ReadAllTextAsync(filePath)
-                .ConfigureAwait(false);
-            return JsonSerializer.Deserialize<SyncGroupData>(
-                json, JSON_OPTIONS);
-        }
-        catch (Exception ex) when (IsSyncException(ex))
-        {
-            ApplicationLogger.LogError("グループ読み込み", ex);
-            return null;
-        }
+        // 読み込めない場合は、ファイルが無い場合と区別できるよう例外をそのまま投げる
+        var json = await File.ReadAllTextAsync(filePath)
+            .ConfigureAwait(false);
+        return JsonSerializer.Deserialize<SyncGroupData>(
+            json, JSON_OPTIONS);
     }
 
     /// <inheritdoc/>

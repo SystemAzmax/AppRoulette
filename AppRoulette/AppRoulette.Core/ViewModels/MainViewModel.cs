@@ -608,7 +608,7 @@ public class MainViewModel : ObservableObject
 
     /// <summary>
     /// 起動時に選択中グループの OneDrive フォルダーのデータを
-    /// ダウンロードして新しければ適用します。
+    /// ダウンロードして新しければ適用し、結果を同期状態に表示します。
     /// </summary>
     private async Task DownloadOnStartupAsync()
     {
@@ -617,12 +617,11 @@ public class MainViewModel : ObservableObject
             return;
         }
 
-        if (SelectedGroup is not null)
-        {
-            await DownloadAndApplyGroupAsync(SelectedGroup.Id);
-        }
-
-        SyncStatusText = SYNC_STATUS_SYNCED;
+        var succeeded = SelectedGroup is null
+            || await DownloadAndApplyGroupAsync(SelectedGroup.Id);
+        SyncStatusText = succeeded
+            ? SYNC_STATUS_SYNCED
+            : SYNC_STATUS_FAILED;
     }
 
     /// <summary>
@@ -680,11 +679,15 @@ public class MainViewModel : ObservableObject
     /// ローカルより新しい場合のみ適用します。
     /// </summary>
     /// <param name="groupId">グループID。</param>
-    private async Task DownloadAndApplyGroupAsync(int groupId)
+    /// <returns>
+    /// ダウンロードと適用に成功した場合は true（クラウドにデータが無く、適用するものが無い場合を含む）。
+    /// 読み込みや適用に失敗した場合は false。
+    /// </returns>
+    private async Task<bool> DownloadAndApplyGroupAsync(int groupId)
     {
         if (_cloudSyncService is null || _syncTimestampStore is null)
         {
-            return;
+            return false;
         }
 
         try
@@ -693,7 +696,7 @@ public class MainViewModel : ObservableObject
             var group = GroupList.FirstOrDefault(g => g.Id == groupId);
             if (group is null || remote is null)
             {
-                return;
+                return true;
             }
 
             var localTimestamp =
@@ -705,10 +708,13 @@ public class MainViewModel : ObservableObject
             {
                 await ApplyRemoteGroupAsync(group, remote);
             }
+
+            return true;
         }
         catch (Exception ex)
         {
             ApplicationLogger.LogError("クラウドデータ取得", ex);
+            return false;
         }
     }
 
