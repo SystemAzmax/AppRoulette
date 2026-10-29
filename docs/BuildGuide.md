@@ -212,18 +212,22 @@ Visual Studio でデバッグ実行したときのデータは、パッケージ
 アプリを閉じてから、PowerShell で次を実行します。
 
 ```powershell
-$src = "$env:LOCALAPPDATA\Packages\91d0b9ad-65b1-4502-ac9c-d13dc83c4750_zegbcpgrcgmda\LocalCache\Local\AppRoulette"
+$src = "$env:LOCALAPPDATA\Packages\F0C48714.AppRoulette_97pagdhhke8ew\LocalCache\Local\AppRoulette"
 $dst = "$env:LOCALAPPDATA\AppRoulette"
 New-Item -ItemType Directory -Force $dst | Out-Null
 Copy-Item "$src\*" $dst -Force
 ```
 
-- パッケージ フォルダー名は、`Package.appxmanifest` の `Identity` の `Name` で始まります。
-  ストアからインストールした版はパッケージ名が変わるので、
-  `%LOCALAPPDATA%\Packages` の中で探してください。
+- パッケージ フォルダー名は「`Package.appxmanifest` の `Identity` の `Name`」と
+  「`Publisher` から計算される値」を `_` でつないだものです。
+  PowerShell の `Get-AppxPackage -Name F0C48714.AppRoulette` でも確認できます（`PackageFamilyName`）。
+- ストアからインストールした版も、同じフォルダーを使います（下の「注意点」を参照）。
+- ストアと関連付ける前のデバッグ版のデータは、
+  `91d0b9ad-65b1-4502-ac9c-d13dc83c4750_zegbcpgrcgmda` のフォルダーに残っています。
+  そのデータをコピーするときは、`$src` のフォルダー名をこちらに変えます。
 - コピー先に既にデータがある場合は上書きされます。必要なら先にバックアップします。
-- `Packages\...\LocalState\roulette.db` は以前の保存場所に残った古いファイルなので、
-  コピーは不要です。
+- `LocalCache` と同じ階層の `LocalState` にあるのはエラーのログ（`logs\error.log`）で、コピーは不要です。
+  関連付け前のフォルダーの `LocalState\roulette.db` は、以前の保存場所に残った古いファイルです。
 - コピーは 1 回限りです。その後はそれぞれの版が別々にデータを更新します。
 
 ## 注意点
@@ -243,3 +247,11 @@ Copy-Item "$src\*" $dst -Force
 - **版を切り替えたらリビルドする**:
   exe 版とストア版は同じ `bin` / `obj` フォルダーを使います。
   exe 版を発行した後にストア版を作るときは、念のためリビルドしてください。
+- **デバッグ実行する版とストアからインストールした版は、同じパッケージになる**:
+  ストアと関連付けたため、Visual Studio でデバッグ実行する版も、
+  ストアからインストールした版も、パッケージ名は `F0C48714.AppRoulette` です。
+  同じ PC に両方を入れることはできず、データの保存先も同じフォルダーになります。
+  ストア版をインストールした PC でデバッグ実行すると、配置に失敗したり、
+  ストア版のアンインストールを求められたりすることがあります。
+  アンインストールするとそのデータ（パッケージのフォルダー）も消えるので、
+  先にアプリの **バックアップ保存** で、すべてのリストを保存しておいてください。
