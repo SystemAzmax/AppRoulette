@@ -9,7 +9,6 @@ Windows デスクトップ用のルーレット選択アプリケーション。
 - **アニメーションルーレット**: スムーズな回転アニメーションと現実的な減速効果
 - **永続化ストレージ**: グループとアイテムを JSON 形式で自動保存
 - **MVVM アーキテクチャ**: ViewModel ベースの関心の分離
-- **ダイアミックアイコン生成**: アプリケーション用のアイコンを動的に生成
 - **ウィンドウ状態管理**: ウィンドウサイズと位置をセッション間で保存
 
 ## 技術スタック
@@ -35,8 +34,7 @@ AppRoulette/
 │   ├── IRandomService.cs                # ランダム生成インターフェース
 │   ├── RandomService.cs                 # ランダム生成実装
 │   ├── IWindowPositionService.cs        # ウィンドウ状態管理インターフェース
-│   ├── WindowPositionService.cs         # ウィンドウ状態管理実装
-│   └── AppIconService.cs                # アプリケーション アイコン生成
+│   └── WindowPositionService.cs         # ウィンドウ状態管理実装
 ├── Views/
 │   └── RouletteRenderer.cs   # ルーレット描画ロジック
 ├── MainWindow.xaml          # メイン UI
@@ -57,7 +55,6 @@ AppRoulette/
 - **JsonDataPersistenceService**: グループとアイテムを JSON 形式でロード/セーブ
 - **RandomService**: 公正な選択のためのランダム数生成
 - **WindowPositionService**: アプリケーションウィンドウサイズと位置を管理
-- **AppIconService**: ICO 形式のアプリケーションアイコンを生成
 
 ### Views
 - **RouletteRenderer**: グラフィックス API を使用したアニメーション ルーレット描画
@@ -141,9 +138,8 @@ dotnet test
 - 内容: シリアル化された `RouletteGroup` オブジェクトとそのアイテム
 
 ### アイコン
-- 形式: ICO (Windows アイコン)
-- `AppIconService` により動的に生成
-- アプリケーション ブランディングに使用
+- exe とウィンドウのアイコン: `AppRoulette/AppRoulette/Copilot_20260614_202528.ico`（16〜256px の各サイズを含む ICO）
+- ストア版のパッケージ画像: `AppRoulette/AppRoulette (Package)/Images/`
 
 ## パフォーマンスの考慮事項
 

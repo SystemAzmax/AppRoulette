@@ -9,7 +9,6 @@ A modern Windows desktop application for managing and running roulette selection
 - **Animated Roulette Wheel**: Smooth spinning animation with realistic deceleration effects
 - **Persistent Storage**: Automatically saves your groups and items using JSON serialization
 - **MVVM Architecture**: Clean separation of concerns with ViewModel-based architecture
-- **Cross-Platform Icons**: Generate dynamic icon files for application branding
 - **Window State Management**: Remembers window size and position between sessions
 
 ## Technology Stack
@@ -35,8 +34,7 @@ AppRoulette/
 │   ├── IRandomService.cs                # Random number generation interface
 │   ├── RandomService.cs                 # Standard random service
 │   ├── IWindowPositionService.cs        # Window state persistence
-│   ├── WindowPositionService.cs         # Window state implementation
-│   └── AppIconService.cs                # Application icon generation
+│   └── WindowPositionService.cs         # Window state implementation
 ├── Views/
 │   └── RouletteRenderer.cs   # Roulette wheel rendering logic
 ├── MainWindow.xaml          # Main application UI
@@ -57,7 +55,6 @@ AppRoulette/
 - **JsonDataPersistenceService**: Loads/saves groups and items in JSON format
 - **RandomService**: Provides random number generation for fair selections
 - **WindowPositionService**: Manages application window size and position
-- **AppIconService**: Generates application icons in ICO format
 
 ### Views
 - **RouletteRenderer**: Renders the animated roulette wheel using graphics APIs
@@ -141,9 +138,8 @@ dotnet test
 - Content: Serialized `RouletteGroup` objects with their items
 
 ### Icons
-- Format: ICO (Windows Icon)
-- Generated dynamically using `AppIconService`
-- Used for application branding
+- Executable and window icon: `AppRoulette/AppRoulette/Copilot_20260614_202528.ico` (ICO with sizes from 16 to 256 px)
+- Store package images: `AppRoulette/AppRoulette (Package)/Images/`
 
 ## Performance Considerations
 

@@ -36,42 +36,6 @@ namespace AppRoulette
         public App()
         {
             InitializeComponent();
-
-            // アプリケーションアイコンを初期化
-            try
-            {
-                GenerateApplicationIcon();
-            }
-            catch (Exception ex)
-            {
-                ApplicationLogger.LogError("アプリケーションアイコン生成", ex);
-            }
-        }
-
-        /// <summary>
-        /// アプリケーションアイコンを生成して保存します。
-        /// </summary>
-        private void GenerateApplicationIcon()
-        {            string assetsPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets");
-            string iconPath = System.IO.Path.Combine(assetsPath, "app.ico");
-
-            // Assetsフォルダが存在しなければ作成
-            if (!Directory.Exists(assetsPath))
-            {
-                Directory.CreateDirectory(assetsPath);
-            }
-
-            // アイコンが既に存在する場合はスキップ
-            if (File.Exists(iconPath))
-            {
-                return;
-            }
-
-            // ルーレットアイコンを生成
-            byte[] iconData = Services.AppIconService.GenerateRouletteIcon(256);
-
-            // ファイルに保存
-            File.WriteAllBytes(iconPath, iconData);
         }
 
         /// <summary>
@@ -105,23 +69,13 @@ namespace AppRoulette
                 ApplicationLogger.LogError("データベース初期化", ex);
             }
 
-            // ウィンドウアイコンを設定
+            // ウィンドウアイコンを設定（exe と同じ ico を出力フォルダーから読み込む）
             try
             {
-                // 複数のアイコン候補を試す
-                string[] iconPaths = new[]
+                string iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Copilot_20260614_202528.ico");
+                if (File.Exists(iconPath))
                 {
-                    System.IO.Path.Combine(AppContext.BaseDirectory, "Copilot_20260614_202528.ico"),
-                    System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico"),
-                };
-
-                foreach (string iconPath in iconPaths)
-                {
-                    if (File.Exists(iconPath))
-                    {
-                        _window.AppWindow.SetIcon(iconPath);
-                        break;
-                    }
+                    _window.AppWindow.SetIcon(iconPath);
                 }
             }
             catch (Exception ex)
