@@ -47,6 +47,11 @@
     <ProjectReference Include="..\AppRoulette.Core\AppRoulette.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- ルーレットのラベルの分割（RouletteRenderer）などの internal のメンバーをテストする -->
+    <InternalsVisibleTo Include="AppRoulette.Tests" />
+  </ItemGroup>
+
     <!-- Publish Properties -->
   <PropertyGroup>
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>

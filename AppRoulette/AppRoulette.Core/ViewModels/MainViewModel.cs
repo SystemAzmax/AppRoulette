@@ -89,6 +89,12 @@ public class MainViewModel : ObservableObject
 
     private bool _isSyncingItemsText;
 
+    /// <summary>
+    /// テキストからアイテムを作り直すときに、同じ名前のアイテムの有効・無効を引き継ぐかどうか。
+    /// CSV インポートの置き換えでは引き継がない。
+    /// </summary>
+    private bool _carriesOverEnabledState = true;
+
     private bool _isSyncingEditableItems;
 
     private string _syncStatusText = SYNC_STATUS_READY;
@@ -1563,8 +1569,35 @@ public class MainViewModel : ObservableObject
     }
 
     /// <summary>
+    /// テキストから作り直したアイテムに、作り直す前のアイテムのうち
+    /// 同じ名前のものの有効・無効を引き継ぎます。
+    /// 同じ名前のアイテムが複数ある場合は、出てくる順に対応させます。
+    /// </summary>
+    /// <param name="previousItems">作り直す前のアイテム。</param>
+    /// <param name="items">作り直したアイテム。</param>
+    private static void CarryOverEnabledState(
+        IEnumerable<RouletteItem> previousItems,
+        IEnumerable<RouletteItem> items)
+    {
+        var remaining = previousItems.ToList();
+        foreach (var item in items)
+        {
+            var previous = remaining.FirstOrDefault(
+                candidate => candidate.Name == item.Name);
+            if (previous is null)
+            {
+                continue;
+            }
+
+            item.IsEnabled = previous.IsEnabled;
+            remaining.Remove(previous);
+        }
+    }
+
+    /// <summary>
     /// <see cref="ItemsText"/> 変更時にアイテムリストとアイテム数を更新し、
     /// テキストが変わった場合は非同期で SQLite に保存します。
+    /// 同じ名前のアイテムの有効・無効は引き継ぎます（CSV インポートの置き換えを除く）。
     /// </summary>
     /// <param name="value">変更後のテキスト。</param>
     private void OnItemsTextChanged(string value)
@@ -1583,6 +1616,12 @@ public class MainViewModel : ObservableObject
         var items = parsedItems
             .Take(RouletteGroup.MAX_ITEM_COUNT)
             .ToList();
+        if (_carriesOverEnabledState)
+        {
+            // テキストには有効・無効を書かないため、そのままでは全部「有効」に戻ってしまう
+            CarryOverEnabledState(SelectedGroup.Items, items);
+        }
+
         SelectedGroup.Items = items;
         ReplaceEditableItems(items);
         ItemCount = items.Count;
@@ -1877,7 +1916,16 @@ public class MainViewModel : ObservableObject
             }
         }
 
-        ItemsText = FormatItems(items);
+        // 置き換えなので、元のアイテムの有効・無効は引き継がず、すべて有効で読み込む
+        _carriesOverEnabledState = false;
+        try
+        {
+            ItemsText = FormatItems(items);
+        }
+        finally
+        {
+            _carriesOverEnabledState = true;
+        }
 
         // 確認で知らせていない場合は、読み込まなかった件数をここで知らせる
         if (!needsConfirm && skippedCount > 0)

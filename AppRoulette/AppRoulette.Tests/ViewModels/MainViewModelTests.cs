@@ -1648,6 +1648,58 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task ItemsText_テキストを書き換えた場合_同じ名前のアイテムの有効無効を引き継ぐ()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        fakeRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", weight: 1, groupId: 1),
+            new("アイテムB", weight: 1, groupId: 1) { IsEnabled = false },
+            new("アイテムC", weight: 1, groupId: 1),
+        });
+        var sut = CreateSut(customRepository: fakeRepo);
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act（アイテムB の Weight を変え、アイテムD を追加する）
+        sut.ItemsText = "アイテムA,1\nアイテムB,3\nアイテムC,1\nアイテムD,1";
+        await WaitForAutoSaveAsync(sut);
+
+        var restartedSut = CreateSut(customRepository: fakeRepo);
+        await restartedSut.InitializeCommand.ExecuteAsync(null);
+
+        // Assert
+        var expected = new[] { true, false, true, true };
+        Assert.Equal(expected, sut.SelectedGroup!.Items.Select(item => item.IsEnabled));
+        Assert.Equal(expected, sut.EditableItems.Select(item => item.IsEnabled));
+        Assert.Equal(3, sut.SelectedGroup.Items[1].Weight);
+        Assert.Equal(expected, restartedSut.SelectedGroup!.Items.Select(item => item.IsEnabled));
+    }
+
+    [Fact]
+    public async Task ImportItemsFromCsvAsync_置き換えた場合_有効無効は引き継がずすべて有効にする()
+    {
+        // Arrange
+        var fakeRepo = new FakeItemRepository();
+        fakeRepo.InitializeWithItems(new List<Item>
+        {
+            new("アイテムA", weight: 1, groupId: 1),
+            new("アイテムB", weight: 1, groupId: 1) { IsEnabled = false },
+        });
+        var sut = CreateSut(
+            customRepository: fakeRepo,
+            dialogService: new FakeDialogService(confirmResult: true));
+        await sut.InitializeCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.ImportItemsFromCsvAsync("アイテムA,1\nアイテムB,2");
+
+        // Assert
+        Assert.All(sut.SelectedGroup!.Items, item => Assert.True(item.IsEnabled));
+        Assert.All(sut.EditableItems, item => Assert.True(item.IsEnabled));
+    }
+
+    [Fact]
     public async Task ExcludeWinnerIfNeeded_モード有効時_再初期化で除外状態が復元される()
     {
         // Arrange

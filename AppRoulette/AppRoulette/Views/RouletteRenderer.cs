@@ -272,12 +272,13 @@ internal static class RouletteRenderer
 
     /// <summary>
     /// テキストを複数行に分割します。
+    /// 最大行数に収まらない場合は、最後の行の末尾を省略記号にします。
     /// </summary>
     /// <param name="text">元のテキスト。</param>
     /// <param name="charsPerLine">1行あたりの最大文字数。</param>
     /// <param name="maxLines">最大行数。</param>
     /// <returns>分割されたテキストの行配列。</returns>
-    private static string[] SplitTextIntoLines(string text, int charsPerLine, int maxLines)
+    internal static string[] SplitTextIntoLines(string text, int charsPerLine, int maxLines)
     {
         if (string.IsNullOrEmpty(text))
             return new[] { "" };
@@ -290,6 +291,8 @@ internal static class RouletteRenderer
             if (remaining.Length <= charsPerLine)
             {
                 lines.Add(remaining);
+                // 残りをすべて表示したので、下の省略記号を付けないよう空にする
+                remaining = string.Empty;
                 break;
             }
             else
