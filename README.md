@@ -104,6 +104,8 @@ tools/                            # Scripts that create the icon, package images
 4. **Exclude picked items**: To leave picked items out of later draws, turn on **当たったら除外**
 5. **Saving**: Changes are saved automatically
 
+For details on each part of the screen and troubleshooting, see the [User Guide](docs/UserGuide.md).
+
 ## Architecture Details
 
 ### MVVM Pattern
