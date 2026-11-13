@@ -364,8 +364,11 @@
     <MainPackageIdentityName>F0C48714.AppRoulette</MainPackageIdentityName>
     <ReservedNames>
       <ReservedName>AppRoulette</ReservedName>
+      <ReservedName>かんたんルーレット</ReservedName>
     </ReservedNames>
   </ProductReservedInfo>
-  <AccountPackageIdentityNames />
+  <AccountPackageIdentityNames>
+    <MainPackageIdentityName>F0C48714.AuroraWallpaperChanger</MainPackageIdentityName>
+  </AccountPackageIdentityNames>
   <PackageInfoList LandingUrl="https://devcenterapi.dce.mp.microsoft.com/dashboard/Application?appId=9P4KMLNJF8QF" />
 </StoreAssociation>
