@@ -872,7 +872,7 @@ public class MainViewModelTests
         Assert.Equal(0, dialog.ConfirmCallCount);
         Assert.Equal(0, backupRepo.ReplaceAllCallCount);
         Assert.Contains(
-            "AppRoulette のバックアップファイルではありません",
+            "かんたんルーレットのバックアップファイルではありません",
             Assert.Single(dialog.ShownMessages));
         Assert.Equal(9, sut.GroupList.Count);
     }

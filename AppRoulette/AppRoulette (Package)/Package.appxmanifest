@@ -10,12 +10,13 @@
   <Identity
     Name="F0C48714.AppRoulette"
     Publisher="CN=984901FF-A7B3-415C-B173-06EC90101C99"
-    Version="1.0.0.0" />
+    Version="1.1.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="91d0b9ad-65b1-4502-ac9c-d13dc83c4750" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>AppRoulette</DisplayName>
+    <!-- 表示名と説明は Strings\<言語>\Resources.resw にある。日本語は「かんたんルーレット」、それ以外は「AppRoulette」 -->
+    <DisplayName>ms-resource:AppDisplayName</DisplayName>
     <PublisherDisplayName>あずま屋</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
   </Properties>
@@ -34,8 +35,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="AppRoulette"
-        Description="登録したアイテムの中から、ルーレットを回して 1 つを選ぶアプリ"
+        DisplayName="ms-resource:AppDisplayName"
+        Description="ms-resource:AppDescription"
         BackgroundColor="transparent"
         Square150x150Logo="Images\Square150x150Logo.png"
         Square44x44Logo="Images\Square44x44Logo.png">

@@ -1,4 +1,4 @@
-# AppRoulette プライバシーポリシー / Privacy Policy
+# かんたんルーレット（AppRoulette）プライバシーポリシー / Privacy Policy
 
 [日本語](#日本語) | [English](#english)
 
@@ -6,7 +6,7 @@
 
 制定日: 2026 年 10 月 29 日
 
-SystemAzmax（以下「開発者」）は、Windows 用アプリ「AppRoulette」（以下「本アプリ」）における
+SystemAzmax（以下「開発者」）は、Windows 用アプリ「かんたんルーレット」（英語名: AppRoulette、以下「本アプリ」）における
 利用者の情報の取り扱いについて、次のとおり定めます。
 
 ### 収集する情報
@@ -59,7 +59,7 @@ Windows や Microsoft Store など、Microsoft の製品やサービスが扱う
 Effective date: October 29, 2026
 
 This privacy policy describes how SystemAzmax (the "developer") handles user information
-in AppRoulette (the "app"), an app for Windows.
+in AppRoulette (Japanese name: かんたんルーレット; the "app"), an app for Windows.
 
 ### Information We Collect
 

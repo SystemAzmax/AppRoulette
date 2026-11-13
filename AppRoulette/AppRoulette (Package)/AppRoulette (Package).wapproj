@@ -40,7 +40,9 @@
     <TargetPlatformVersion>10.0.26100.0</TargetPlatformVersion>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <AssetTargetFallback>net10.0-windows$(TargetPlatformVersion);$(AssetTargetFallback)</AssetTargetFallback>
-    <DefaultLanguage>ja-JP</DefaultLanguage>
+    <!-- 既定の言語。パッケージに無い言語（日本語・英語以外）では、この言語のリソースが使われる。
+         アプリ名を日本語以外では英語名にするため en-US にする（Strings フォルダーを参照） -->
+    <DefaultLanguage>en-US</DefaultLanguage>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
     <EntryPointProjectUniqueName>..\AppRoulette\AppRoulette.csproj</EntryPointProjectUniqueName>
     <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
@@ -77,6 +79,11 @@
   <ItemGroup>
     <Content Include="Images\*.png" />
     <None Include="Package.StoreAssociation.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- マニフェストの表示名と説明（ms-resource:）の言語ごとの文字列 -->
+    <PRIResource Include="Strings\en-US\Resources.resw" />
+    <PRIResource Include="Strings\ja-JP\Resources.resw" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AppRoulette\AppRoulette.csproj">

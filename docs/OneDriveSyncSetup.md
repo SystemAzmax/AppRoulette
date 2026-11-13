@@ -1,6 +1,6 @@
 # OneDrive フォルダー同期の仕組み（開発者向け）
 
-このドキュメントは、AppRoulette の OneDrive フォルダー同期機能の
+このドキュメントは、かんたんルーレット（AppRoulette）の OneDrive フォルダー同期機能の
 仕組みを説明します。
 
 Microsoft Entra ID へのアプリ登録やサインインは**不要**です。

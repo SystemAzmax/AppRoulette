@@ -68,13 +68,13 @@ public static class BackupSerializer
         if (backup is null || backup.App != APP_NAME)
         {
             throw new BackupFormatException(
-                "AppRoulette のバックアップファイルではありません。");
+                $"{AppDisplayName.JAPANESE}のバックアップファイルではありません。");
         }
 
         if (backup.FormatVersion > FORMAT_VERSION)
         {
             throw new BackupFormatException(
-                "新しいバージョンの AppRoulette で作られたバックアップです。"
+                $"新しいバージョンの{AppDisplayName.JAPANESE}で作られたバックアップです。"
                 + "アプリを更新してから復元してください。");
         }
 

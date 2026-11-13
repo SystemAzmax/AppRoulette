@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 
 namespace AppRoulette.Services
@@ -7,11 +8,11 @@ namespace AppRoulette.Services
     /// </summary>
     public static class AppInfoProvider
     {
-        /// <summary>アプリ名を取得できない場合に使う名前。</summary>
-        private const string DEFAULT_PRODUCT_NAME = "AppRoulette";
-
         /// <summary>使用しているソフトウェアのライセンス表示のファイル名。</summary>
         private const string THIRD_PARTY_NOTICES_FILE_NAME = "ThirdPartyNotices.txt";
+
+        /// <summary>使い方ガイド（docs/UserGuide.md、docs/UserGuide_ja.md）のあるフォルダーの URL。</summary>
+        private const string USER_GUIDE_BASE_URL = "https://github.com/SystemAzmax/AppRoulette/blob/main/docs";
 
         /// <summary>
         /// 使用しているソフトウェアのライセンス表示のファイルのパスを取得します。
@@ -21,13 +22,17 @@ namespace AppRoulette.Services
             Path.Combine(AppContext.BaseDirectory, THIRD_PARTY_NOTICES_FILE_NAME);
 
         /// <summary>
+        /// 表示言語（日本語なら日本語版、それ以外は英語版）の使い方ガイドの URL を取得します。
+        /// </summary>
+        public static string UserGuideUrl =>
+            AppAboutInfo.CreateUserGuideUrl(USER_GUIDE_BASE_URL, CultureInfo.CurrentUICulture);
+
+        /// <summary>
         /// アプリ名を取得します。
+        /// 表示言語が日本語の場合は日本語名、それ以外の場合は英語名を返します。
         /// </summary>
         /// <returns>アプリ名。</returns>
-        public static string GetProductName() =>
-            typeof(AppInfoProvider).Assembly
-                .GetCustomAttribute<AssemblyProductAttribute>()?.Product
-            ?? DEFAULT_PRODUCT_NAME;
+        public static string GetProductName() => AppDisplayName.GetCurrent();
 
         /// <summary>
         /// アプリのバージョンと、ストア版（パッケージあり）かどうかを取得します。

@@ -1,6 +1,6 @@
 # ビルド方法（開発者向け）
 
-このドキュメントは、AppRoulette をストア版と exe 版のそれぞれで
+このドキュメントは、かんたんルーレット（AppRoulette）をストア版と exe 版のそれぞれで
 ビルドする方法をまとめたものです。
 
 ## 2 つの版の違い
@@ -23,6 +23,41 @@
 エラーが起きたときにウィンドウの上部に出る帯の **ログを開く** から開けます。
 ストア版のログは、リダイレクトされない `LocalState` に置いています
 （リダイレクト先だと、アプリからメモ帳などに渡したパスで開けないため）。
+
+## アプリ名（日本語名と英語名）
+
+アプリ名は、表示言語が日本語の場合は **かんたんルーレット**、それ以外の言語では **AppRoulette** です。
+名前を変えるときは、次の 3 か所をそろえます。
+
+| 表示される場所 | 名前を決めているところ | 言語の選び方 |
+| --- | --- | --- |
+| スタートメニュー、タスクバー、設定のアプリ一覧（ストア版） | `AppRoulette (Package)\Strings\<言語>\Resources.resw` の `AppDisplayName` | Windows の言語の設定。日本語が無い場合は、既定の言語（en-US）の名前 |
+| ウィンドウのタイトル、「このアプリについて」 | `AppRoulette.Core\Services\AppDisplayName.cs` | 表示言語（`CultureInfo.CurrentUICulture`）が日本語かどうか |
+| 日本語の文章の中の名前（バックアップのエラー、ライセンス表示など） | `AppDisplayName.JAPANESE` と、`tools\notices\build-notices.sh` | 常に日本語名 |
+
+- `Package.appxmanifest` の `DisplayName` と `Description` は、`ms-resource:AppDisplayName` のように
+  リソースを参照しています。マニフェストに名前を直接書かないでください。
+- パッケージの既定の言語（`AppRoulette (Package).wapproj` の `DefaultLanguage`）は `en-US` です。
+  日本語と英語以外の言語では、既定の言語の名前（AppRoulette）が使われます。
+- データの保存先（`%LOCALAPPDATA%\AppRoulette`）、OneDrive のフォルダー（`Apps\AppRoulette`）、
+  バックアップの識別名（`BackupSerializer.APP_NAME`）、パッケージ名（`F0C48714.AppRoulette`）は、
+  英語名のまま変えません。変えると、既存のデータやバックアップを読めなくなります。
+
+### Partner Center での名前の予約
+
+パッケージに入れた名前は、言語ごとに Partner Center で予約済みの名前である必要があります。
+予約していない名前があると、パッケージのアップロードでエラーになります。
+
+1. Partner Center のアプリの **製品管理** → **アプリ名の管理** で、
+   `かんたんルーレット` を追加で予約します（`AppRoulette` は予約済み）。
+2. Visual Studio で **AppRoulette (Package)** を右クリックし、
+   **公開** → **アプリケーションをストアと関連付ける** をやり直します。
+   `Package.StoreAssociation.xml` の予約済みの名前の一覧が更新されます。
+   - 関連付けのあとに `Package.appxmanifest` の `DisplayName` が `AppRoulette` に書き換わっていたら、
+     `ms-resource:AppDisplayName` に戻します。
+3. 申請の **ストア登録情報** で、言語ごとの **製品名** を選びます（日本語は かんたんルーレット、英語は AppRoulette）。
+   パッケージが英語に対応したため、パッケージの言語に英語が加わります。
+   英語の登録情報を用意しない場合は、**言語の追加と削除** で英語を外せます。
 
 ## バージョンの上げ方
 
