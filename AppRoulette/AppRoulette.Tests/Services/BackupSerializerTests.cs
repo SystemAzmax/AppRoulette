@@ -97,7 +97,7 @@ public class BackupSerializerTests
         var ex = Assert.Throws<BackupFormatException>(() => BackupSerializer.Deserialize(json));
 
         // Assert
-        Assert.Contains("AppRoulette のバックアップファイルではありません", ex.Message);
+        Assert.Contains("かんたんルーレットのバックアップファイルではありません", ex.Message);
     }
 
     /// <summary>

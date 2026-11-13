@@ -1,8 +1,8 @@
-# AppRoulette
+# かんたんルーレット（AppRoulette）
 
 [English](README.md) | 日本語
 
-登録したアイテムの中から、ルーレットを回して 1 つを選ぶ Windows 用のデスクトップアプリです。WinUI 3 と .NET 10 で作っています。Microsoft Store 版と、インストール不要の exe 版があります。
+登録したアイテムの中から、ルーレットを回して 1 つを選ぶ Windows 用のデスクトップアプリです。英語名は AppRoulette で、表示言語が日本語以外の Windows では、この名前で表示されます。WinUI 3 と .NET 10 で作っています。Microsoft Store 版と、インストール不要の exe 版があります。
 
 ## 機能
 
@@ -45,7 +45,7 @@ AppRoulette/
 │   ├── Services/                 # SQLite への保存、OneDrive 同期、バックアップ、CSV、ログ
 │   └── ViewModels/               # 画面の状態と処理、回転アニメーションの計算
 ├── AppRoulette.Tests/            # ユニットテスト
-└── AppRoulette (Package)/        # ストア版の MSIX パッケージ（マニフェストとパッケージ画像）
+└── AppRoulette (Package)/        # ストア版の MSIX パッケージ（マニフェスト、パッケージ画像、言語ごとの表示名）
 docs/                             # 開発者向けの文書（ビルド方法、OneDrive 同期の仕組み）
 tools/                            # アイコン、パッケージ画像、ライセンス表示を作るスクリプト
 ```

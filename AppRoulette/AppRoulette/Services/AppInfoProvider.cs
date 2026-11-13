@@ -7,9 +7,6 @@ namespace AppRoulette.Services
     /// </summary>
     public static class AppInfoProvider
     {
-        /// <summary>アプリ名を取得できない場合に使う名前。</summary>
-        private const string DEFAULT_PRODUCT_NAME = "AppRoulette";
-
         /// <summary>使用しているソフトウェアのライセンス表示のファイル名。</summary>
         private const string THIRD_PARTY_NOTICES_FILE_NAME = "ThirdPartyNotices.txt";
 
@@ -22,12 +19,10 @@ namespace AppRoulette.Services
 
         /// <summary>
         /// アプリ名を取得します。
+        /// 表示言語が日本語の場合は日本語名、それ以外の場合は英語名を返します。
         /// </summary>
         /// <returns>アプリ名。</returns>
-        public static string GetProductName() =>
-            typeof(AppInfoProvider).Assembly
-                .GetCustomAttribute<AssemblyProductAttribute>()?.Product
-            ?? DEFAULT_PRODUCT_NAME;
+        public static string GetProductName() => AppDisplayName.GetCurrent();
 
         /// <summary>
         /// アプリのバージョンと、ストア版（パッケージあり）かどうかを取得します。

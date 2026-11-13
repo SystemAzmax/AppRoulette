@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using AppRoulette.Services;
 
@@ -25,23 +26,38 @@ public class AppInfoProviderTests
     }
 
     /// <summary>
-    /// 本文に、AppRoulette.csproj で設定したアプリ名と著作権表記が入ることを検証します。
+    /// 本文に、表示言語に合ったアプリ名と、AppRoulette.csproj で設定した著作権表記が入ることを検証します。
     /// </summary>
-    [Fact]
-    public void CreateAboutMessage_パッケージなしで実行した場合_exe版としてアプリ名と著作権表記を含む()
+    /// <param name="cultureName">表示言語。</param>
+    /// <param name="expectedName">期待するアプリ名。</param>
+    [Theory]
+    [InlineData("ja-JP", "かんたんルーレット")]
+    [InlineData("en-US", "AppRoulette")]
+    public void CreateAboutMessage_パッケージなしで実行した場合_exe版としてアプリ名と著作権表記を含む(
+        string cultureName,
+        string expectedName)
     {
         // Arrange
         var copyright = typeof(AppInfoProvider).Assembly
             .GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright;
+        var originalCulture = CultureInfo.CurrentUICulture;
+        CultureInfo.CurrentUICulture = new CultureInfo(cultureName);
 
-        // Act
-        var message = AppInfoProvider.CreateAboutMessage();
+        try
+        {
+            // Act
+            var message = AppInfoProvider.CreateAboutMessage();
 
-        // Assert
-        Assert.False(string.IsNullOrWhiteSpace(copyright));
-        Assert.StartsWith("AppRoulette\nバージョン ", message);
-        Assert.Contains("（exe 版）", message);
-        Assert.EndsWith($"\n\n{copyright}", message);
+            // Assert
+            Assert.False(string.IsNullOrWhiteSpace(copyright));
+            Assert.StartsWith($"{expectedName}\nバージョン ", message);
+            Assert.Contains("（exe 版）", message);
+            Assert.EndsWith($"\n\n{copyright}", message);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = originalCulture;
+        }
     }
 
     /// <summary>

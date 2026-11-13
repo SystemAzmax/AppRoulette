@@ -97,6 +97,9 @@ namespace AppRoulette
         {
             InitializeComponent();
 
+            // タイトルバーとタスクバーに出るアプリ名。表示言語に合わせて日本語名と英語名を切り替える
+            Title = AppInfoProvider.GetProductName();
+
             _dialogService = new ContentDialogService(() => Content?.XamlRoot);
             ViewModel = new MainViewModel(
                 new RandomService(),
@@ -1081,7 +1084,7 @@ namespace AppRoulette
                 picker.SuggestedStartLocation =
                     Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
                 picker.FileTypeChoices.Add(
-                    "AppRoulette バックアップ", new List<string> { ".json" });
+                    $"{AppDisplayName.JAPANESE} バックアップ", new List<string> { ".json" });
                 picker.SuggestedFileName = $"AppRoulette-backup-{DateTime.Now:yyyyMMdd-HHmm}";
 
                 var file = await picker.PickSaveFileAsync();
