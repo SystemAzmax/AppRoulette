@@ -73,4 +73,19 @@ public class AppInfoProviderTests
         Assert.True(File.Exists(path), $"ファイルがありません: {path}");
         Assert.Contains("SQLitePCLRaw", File.ReadAllText(path));
     }
+
+    /// <summary>
+    /// 使い方ガイドの URL が、このアプリのリポジトリの docs フォルダーのガイドを指すことを検証します。
+    /// 日本語版と英語版のどちらになるかは、テストを実行する PC の表示言語によります。
+    /// </summary>
+    [Fact]
+    public void UserGuideUrl_リポジトリのdocsフォルダー_使い方ガイドを指す()
+    {
+        // Act
+        var url = AppInfoProvider.UserGuideUrl;
+
+        // Assert
+        Assert.StartsWith("https://github.com/SystemAzmax/AppRoulette/blob/", url);
+        Assert.Matches(@"/docs/UserGuide(_ja)?\.md$", url);
+    }
 }

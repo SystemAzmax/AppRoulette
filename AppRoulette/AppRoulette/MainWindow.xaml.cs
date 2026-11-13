@@ -354,6 +354,30 @@ namespace AppRoulette
         }
 
         /// <summary>
+        /// 「使い方」ボタンのクリックイベントを処理します。
+        /// 表示言語の使い方ガイドを、既定のブラウザーで開きます。
+        /// </summary>
+        /// <param name="sender">イベント発生元。</param>
+        /// <param name="e">イベント引数。</param>
+        private async void OnUserGuideButtonClick(object sender, RoutedEventArgs e)
+        {
+            var url = AppInfoProvider.UserGuideUrl;
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogError("使い方ガイド表示", ex);
+                await _dialogService.ShowMessageAsync(
+                    "使い方",
+                    "使い方ガイドを開けませんでした。"
+                    + $"\n\nURL: {url}\n詳細: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// エラーの知らせにある「ログを開く」ボタンのクリックイベントを処理します。
         /// エラーのログファイルを、既定のアプリで開きます。
         /// </summary>

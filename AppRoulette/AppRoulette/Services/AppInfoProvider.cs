@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 
 namespace AppRoulette.Services
@@ -10,12 +11,21 @@ namespace AppRoulette.Services
         /// <summary>使用しているソフトウェアのライセンス表示のファイル名。</summary>
         private const string THIRD_PARTY_NOTICES_FILE_NAME = "ThirdPartyNotices.txt";
 
+        /// <summary>使い方ガイド（docs/UserGuide.md、docs/UserGuide_ja.md）のあるフォルダーの URL。</summary>
+        private const string USER_GUIDE_BASE_URL = "https://github.com/SystemAzmax/AppRoulette/blob/main/docs";
+
         /// <summary>
         /// 使用しているソフトウェアのライセンス表示のファイルのパスを取得します。
         /// ファイルはアプリと同じフォルダーに配置されます。
         /// </summary>
         public static string ThirdPartyNoticesPath =>
             Path.Combine(AppContext.BaseDirectory, THIRD_PARTY_NOTICES_FILE_NAME);
+
+        /// <summary>
+        /// 表示言語（日本語なら日本語版、それ以外は英語版）の使い方ガイドの URL を取得します。
+        /// </summary>
+        public static string UserGuideUrl =>
+            AppAboutInfo.CreateUserGuideUrl(USER_GUIDE_BASE_URL, CultureInfo.CurrentUICulture);
 
         /// <summary>
         /// アプリ名を取得します。

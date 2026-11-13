@@ -653,6 +653,14 @@
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center"
                         ToolTipService.ToolTip="使用しているソフトウェアのライセンスを表示します。" />
+                    <Button
+                        Content="使い方"
+                        Click="OnUserGuideButtonClick"
+                        Padding="8,4"
+                        CornerRadius="4"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        ToolTipService.ToolTip="使い方ガイドを Web ブラウザーで開きます。" />
                 </StackPanel>
 
             </StackPanel>

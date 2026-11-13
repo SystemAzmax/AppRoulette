@@ -168,6 +168,7 @@ These are on the "その他" (Other) tab.
 | --- | --- |
 | このアプリについて (About this app) | Shows the app version and other information |
 | ライセンス情報 (License information) | Shows the licenses of the software this app uses |
+| 使い方 (User guide) | Opens this page (the user guide) in your web browser |
 
 ## 3. Troubleshooting
 
